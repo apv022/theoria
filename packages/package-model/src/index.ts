@@ -31,6 +31,12 @@ export interface PackageManifest {
   readonly license?: string;
 }
 
+export interface LocalOwnershipReference {
+  readonly type: "user";
+  readonly userId: string;
+  readonly claimedAt: string;
+}
+
 export interface ValidationDiagnostic {
   readonly severity: "error" | "warning" | "info";
   readonly code: string;
@@ -64,6 +70,7 @@ export interface PackageDraft {
   readonly originalFilename?: string;
   readonly sourceChecksum?: string;
   readonly latestCompilationId?: string;
+  readonly owner?: LocalOwnershipReference;
   readonly editor: DraftEditorState;
   readonly commands: readonly DraftCommandRecord[];
   readonly validation: ValidationSummary;
@@ -109,6 +116,7 @@ export interface LibraryEntry {
   readonly addedAt: string;
   readonly lastOpenedAt?: string;
   readonly origin: "imported" | "repository" | "authored";
+  readonly owner?: LocalOwnershipReference;
   readonly source:
     | { readonly type: "package"; readonly packageRecordId: PackageId }
     | { readonly type: "compilation"; readonly compilationId: string };
@@ -181,6 +189,7 @@ export interface ImportedPackage {
   readonly archiveSize: number;
   readonly importedAt: string;
   readonly validation: ValidationSummary;
+  readonly owner?: LocalOwnershipReference;
 }
 
 export interface PackageIdentity {
@@ -203,4 +212,5 @@ export interface CompilationRecord {
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly syncState: "local" | "queued" | "synced";
+  readonly owner?: LocalOwnershipReference;
 }

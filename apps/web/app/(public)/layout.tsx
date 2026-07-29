@@ -1,15 +1,11 @@
 import { Brand, Navigation, SkipLink } from "@theoria/ui";
 import type { ReactNode } from "react";
+import { AccountNavigation } from "../../components/account-navigation";
 
 const primary = [
   { href: "/explore", label: "Explore" },
   { href: "/library", label: "Library" },
   { href: "/studio", label: "Create" },
-] as const;
-
-const utilities = [
-  { href: "/explore#search", label: "Search" },
-  { href: "/settings", label: "Account" },
 ] as const;
 
 export default function PublicLayout({
@@ -23,11 +19,7 @@ export default function PublicLayout({
       <header className="site-header">
         <Brand />
         <Navigation items={primary} label="Primary" className="primary-nav" />
-        <Navigation
-          items={utilities}
-          label="Utilities"
-          className="utility-nav"
-        />
+        <AccountNavigation />
       </header>
       <main id="main">{children}</main>
       <footer className="site-footer">

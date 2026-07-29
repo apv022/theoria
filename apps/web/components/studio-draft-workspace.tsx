@@ -61,6 +61,7 @@ import {
   useState,
   type ChangeEvent,
 } from "react";
+import { useAuth } from "./auth-provider";
 
 const store =
   typeof indexedDB === "undefined" ? undefined : new IndexedDbLocalStore();
@@ -1137,6 +1138,7 @@ export function StudioDraftWorkspace({
 }: {
   readonly draftId: string;
 }) {
+  const { identity } = useAuth();
   const engine = useMemo(() => new WorkerMcfEngine(), []);
   const [draft, setDraft] = useState<PackageDraft>();
   const [saveState, setSaveState] = useState<
@@ -1399,6 +1401,7 @@ export function StudioDraftWorkspace({
       createdAt: at,
       updatedAt: at,
       syncState: "local",
+      ...(draft.owner ? { owner: draft.owner } : {}),
     };
     await store.compilations.put(record);
     const localId = localPackageId(
@@ -1414,6 +1417,7 @@ export function StudioDraftWorkspace({
       version: result.summary.manifest.version,
       addedAt: at,
       origin: "authored",
+      ...(draft.owner ? { owner: draft.owner } : {}),
       source: { type: "compilation", compilationId },
     });
     setDraft({
@@ -1689,6 +1693,43 @@ export function StudioDraftWorkspace({
             >
               {draft.validation.state}
             </Status>
+            {identity ? (
+              draft.owner?.userId === identity.id ? (
+                <Status tone="positive">
+                  Owned by @{identity.profile.handle}
+                </Status>
+              ) : draft.owner ? (
+                <Status tone="warning">Claimed by another account</Status>
+              ) : (
+                <Button
+                  className="button-secondary"
+                  onClick={() => {
+                    const at = new Date().toISOString();
+                    setDraft({
+                      ...draft,
+                      owner: {
+                        type: "user",
+                        userId: identity.id,
+                        claimedAt: at,
+                      },
+                      revision: draft.revision + 1,
+                      updatedAt: at,
+                      commands: [
+                        ...draft.commands.slice(-49),
+                        {
+                          id: crypto.randomUUID(),
+                          label: `Claim for @${identity.profile.handle}`,
+                          at,
+                          revision: draft.revision + 1,
+                        },
+                      ],
+                    });
+                  }}
+                >
+                  Claim local draft
+                </Button>
+              )
+            ) : null}
             <Button
               className="button-secondary"
               onClick={() => void validateNow()}

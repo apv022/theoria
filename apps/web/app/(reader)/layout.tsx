@@ -1,5 +1,6 @@
 import { Brand, Navigation, SkipLink } from "@theoria/ui";
 import type { ReactNode } from "react";
+import { AccountNavigation } from "../../components/account-navigation";
 
 export default function ReaderLayout({
   children,
@@ -15,6 +16,7 @@ export default function ReaderLayout({
           items={[{ href: "/library", label: "Exit reader" }]}
           label="Reader"
         />
+        <AccountNavigation showSearch={false} />
       </header>
       <main id="main">{children}</main>
     </div>

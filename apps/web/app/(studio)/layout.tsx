@@ -1,5 +1,6 @@
 import { Brand, Navigation, SkipLink, Status } from "@theoria/ui";
 import type { ReactNode } from "react";
+import { AccountNavigation } from "../../components/account-navigation";
 
 export default function StudioLayout({
   children,
@@ -17,6 +18,7 @@ export default function StudioLayout({
           label="Studio"
         />
         <Status>Local draft</Status>
+        <AccountNavigation showSearch={false} />
       </header>
       <main id="main">{children}</main>
     </div>

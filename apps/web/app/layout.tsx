@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { AuthProvider } from "../components/auth-provider";
 import { OfflineRegistration } from "../components/offline-registration";
 import "./globals.css";
 
@@ -17,7 +18,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <OfflineRegistration />
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

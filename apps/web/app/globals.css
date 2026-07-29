@@ -140,6 +140,52 @@ h3 {
   border-left: 1px solid var(--line);
   padding-left: 2rem;
 }
+.utility-nav > span,
+.account-local-label {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.account-navigation details {
+  position: relative;
+}
+.account-navigation summary {
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 700;
+  list-style: none;
+}
+.account-navigation summary::-webkit-details-marker {
+  display: none;
+}
+.account-navigation summary::after {
+  content: "⌄";
+  margin-left: 0.45rem;
+  color: var(--accent);
+}
+.account-menu {
+  position: absolute;
+  z-index: 30;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  width: 12rem;
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.65rem;
+  border: 1px solid var(--line);
+  background: var(--white);
+  box-shadow: 0 1rem 2rem rgb(23 22 18 / 12%);
+}
+.account-menu a,
+.account-menu button {
+  width: 100%;
+  min-height: 2.75rem;
+  justify-content: flex-start;
+  padding: 0.65rem 0.8rem;
+  text-align: left;
+}
 .site-footer {
   min-height: 11rem;
   padding: 3rem clamp(1.2rem, 4vw, 4.5rem);
@@ -572,8 +618,73 @@ h3 {
   background: var(--white);
   border: 1px solid var(--line);
 }
+.settings-card + .settings-card,
+.settings-card + .notice {
+  margin-top: 1.5rem;
+}
 .settings-card h2 {
   font: 2.3rem var(--display);
+}
+.settings-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.profile-form {
+  display: grid;
+  gap: 1.2rem;
+}
+.profile-avatar {
+  object-fit: cover;
+}
+.profile-bio {
+  max-width: 46rem;
+  white-space: pre-wrap;
+  font-size: 1.1rem;
+  line-height: 1.7;
+}
+.profile-joined {
+  margin: 1rem 0 2rem;
+  color: var(--muted);
+}
+.auth-page {
+  min-height: calc(100vh - 16rem);
+  display: grid;
+  place-items: center;
+}
+.auth-card {
+  width: min(100%, 34rem);
+  display: grid;
+  gap: 1.15rem;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  border: 1px solid var(--line);
+  background: var(--white);
+}
+.auth-card h1 {
+  margin: 0;
+  font: clamp(2.6rem, 7vw, 4.5rem) var(--display);
+}
+.auth-card > p:not(.section-label, .form-message) {
+  color: var(--muted);
+  line-height: 1.6;
+}
+.auth-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.form-message {
+  padding: 0.8rem 1rem;
+  border-left: 3px solid currentColor;
+}
+.error-message {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 7%, var(--white));
+}
+.success-message {
+  color: var(--sage);
+  background: color-mix(in srgb, var(--sage) 7%, var(--white));
 }
 .reader-header {
   justify-content: space-between;

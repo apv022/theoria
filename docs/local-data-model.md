@@ -25,3 +25,8 @@ ready for later revision/timestamp-based synchronization, but the browser remain
 Restart deletes only `progress`. Removing a source-imported library item also deletes its package
 blob. Removing a compilation-backed item does not delete compilation history. Package bytes and
 learner state are always separate.
+
+Account support does not change the IndexedDB schema. Draft, package, library, and compilation
+record types accept an optional `{ type: "user", userId, claimedAt }` ownership reference. Existing
+records are not rewritten, signing in performs no IndexedDB scan, and claims remain local until a
+future explicit synchronization stage.

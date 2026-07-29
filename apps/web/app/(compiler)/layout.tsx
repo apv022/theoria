@@ -1,5 +1,6 @@
 import { Brand, Navigation, SkipLink, Status } from "@theoria/ui";
 import type { ReactNode } from "react";
+import { AccountNavigation } from "../../components/account-navigation";
 
 export default function CompilerLayout({
   children,
@@ -20,6 +21,7 @@ export default function CompilerLayout({
           label="Compiler"
         />
         <Status tone="positive">Local only</Status>
+        <AccountNavigation showSearch={false} />
       </header>
       <main id="main">{children}</main>
     </div>

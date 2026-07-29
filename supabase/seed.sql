@@ -1,0 +1,1 @@
+-- Intentionally empty. Automated tests create disposable auth users transactionally.

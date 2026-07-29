@@ -1,4 +1,5 @@
-# Supabase
+# Local Supabase
 
-Reserved for a future shared-state service. No project, schema, client, or credentials are configured
-in the foundation.
+This directory contains the versioned Stage Five profile schema and pgTAP policy tests. It is
+project-scoped and is not linked to a production project. See `docs/supabase-development.md` for
+safe local and production procedures.

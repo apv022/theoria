@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
     "@theoria/mcf-browser",
     "@theoria/local-store",
     "@theoria/package-model",
+    "@theoria/platform-client",
     "@theoria/reader",
     "@theoria/ui",
     "mcf-npm",

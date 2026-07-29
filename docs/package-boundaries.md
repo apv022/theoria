@@ -31,8 +31,9 @@ successful compile.
 
 ## `platform-client`
 
-Interfaces for future authentication, repository access, publishing, and synchronization. There is
-no implementation and no Supabase dependency.
+Owns account, profile, ownership, repository, publishing, and synchronization interfaces. Its
+Supabase adapter implements only authentication and profiles. Supabase query and Auth types stop at
+this boundary; repository, publishing, organizations, and synchronization remain unimplemented.
 
 ## `ui`
 

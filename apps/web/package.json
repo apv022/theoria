@@ -8,10 +8,12 @@
     "start": "next start"
   },
   "dependencies": {
+    "@supabase/ssr": "0.12.4",
     "@theoria/authoring": "workspace:*",
-    "@theoria/mcf-browser": "workspace:*",
     "@theoria/local-store": "workspace:*",
+    "@theoria/mcf-browser": "workspace:*",
     "@theoria/package-model": "workspace:*",
+    "@theoria/platform-client": "workspace:*",
     "@theoria/reader": "workspace:*",
     "@theoria/ui": "workspace:*",
     "next": "16.2.11",

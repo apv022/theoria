@@ -37,10 +37,17 @@ Studio client ───────────────────> canonic
         +─ debounced mcf-browser validation
         +─ IndexedDB autosave
         +─ compile → real /read preview
+
+account UI ──────────────────────> platform-client interfaces
+                                        |
+                                        +─ Supabase adapter
+                                        +─ Auth session + refresh
+                                        +─ public profile queries under RLS
 ```
 
-There is no application backend and no Supabase configuration. Server Components currently provide
-static route shells only; they do not execute imported packages.
+Supabase is optional and owns only identity and public profiles. Server Components and the request
+proxy use cookie-backed account sessions where needed; imported package execution remains entirely
+in the browser.
 
 ## Route layouts
 
@@ -58,7 +65,8 @@ static route shells only; they do not execute imported packages.
 `platform-client` depend on it. `reader` consumes the normalized `mcf-browser` model but contains no
 React or storage code. `authoring` owns draft transformations and source generation, not parsing.
 `ui` depends only on React/Next peer APIs. `apps/web` composes them.
-Platform interfaces do not leak into package execution or IndexedDB.
+Supabase-specific calls stay in the platform adapter and request infrastructure. Platform
+interfaces do not leak into package execution or IndexedDB.
 
 ## Local-first ownership
 
@@ -80,6 +88,10 @@ monotonic revisions, timestamps, response and assessment state, and persisted ra
 The v2-to-v3 and v3-to-v4 upgrades are additive and leave compiler, library, package, and progress
 history untouched.
 
+Drafts, library entries, imported packages, and compilations can carry an optional stable local
+user-ownership reference. Existing records remain unclaimed. Claiming is explicit, and neither
+session restoration nor profile updates enumerate or mutate IndexedDB.
+
 ## Preview isolation
 
 Compiled HTML is read from the generated ZIP and passed to an iframe through `srcDoc`. The iframe
@@ -89,6 +101,6 @@ revoked immediately after dispatch.
 
 ## Deferred server work
 
-Authentication, publishing, repository queries, organization membership, permissions, storage,
-search, and synchronization remain interfaces in `platform-client`. Adding any of them must not make
-local compilation, drafts, progress, or library access account-dependent.
+Publishing, repository queries, organization membership, moderation, storage uploads, search, and
+synchronization remain deferred interfaces. Local compilation, drafts, progress, and library access
+are account-independent.
