@@ -62,6 +62,7 @@ import {
   type ChangeEvent,
 } from "react";
 import { useAuth } from "./auth-provider";
+import { StudioPublishingPanel } from "./studio-publishing-panel";
 
 const store =
   typeof indexedDB === "undefined" ? undefined : new IndexedDbLocalStore();
@@ -1368,6 +1369,30 @@ export function StudioDraftWorkspace({
     else setError(resultMessage(result));
   };
 
+  const claimDraft = () => {
+    if (!identity) return;
+    const at = new Date().toISOString();
+    setDraft({
+      ...draft,
+      owner: {
+        type: "user",
+        userId: identity.id,
+        claimedAt: at,
+      },
+      revision: draft.revision + 1,
+      updatedAt: at,
+      commands: [
+        ...draft.commands.slice(-49),
+        {
+          id: crypto.randomUUID(),
+          label: `Claim for @${identity.profile.handle}`,
+          at,
+          revision: draft.revision + 1,
+        },
+      ],
+    });
+  };
+
   const compile = async (openPreview: boolean) => {
     if (!store) return;
     const result = await execute("compile", draft);
@@ -1659,6 +1684,7 @@ export function StudioDraftWorkspace({
                 "metadata",
                 "source",
                 "preview",
+                "publish",
               ] as const
             ).map((section) => (
               <button
@@ -1701,31 +1727,7 @@ export function StudioDraftWorkspace({
               ) : draft.owner ? (
                 <Status tone="warning">Claimed by another account</Status>
               ) : (
-                <Button
-                  className="button-secondary"
-                  onClick={() => {
-                    const at = new Date().toISOString();
-                    setDraft({
-                      ...draft,
-                      owner: {
-                        type: "user",
-                        userId: identity.id,
-                        claimedAt: at,
-                      },
-                      revision: draft.revision + 1,
-                      updatedAt: at,
-                      commands: [
-                        ...draft.commands.slice(-49),
-                        {
-                          id: crypto.randomUUID(),
-                          label: `Claim for @${identity.profile.handle}`,
-                          at,
-                          revision: draft.revision + 1,
-                        },
-                      ],
-                    });
-                  }}
-                >
+                <Button className="button-secondary" onClick={claimDraft}>
                   Claim local draft
                 </Button>
               )
@@ -1745,7 +1747,7 @@ export function StudioDraftWorkspace({
           </p>
         ) : null}
         {draft.visualEditing !== "supported" &&
-        !["source", "preview"].includes(draft.editor.section) ? (
+        !["source", "preview", "publish"].includes(draft.editor.section) ? (
           <section className="source-boundary">
             <p className="section-label">Explicit round-trip boundary</p>
             <h2>
@@ -2010,6 +2012,39 @@ export function StudioDraftWorkspace({
               </p>
             )}
           </section>
+        ) : draft.editor.section === "publish" ? (
+          <StudioPublishingPanel
+            draft={draft}
+            identity={identity}
+            validate={() => execute("validate", draft)}
+            onClaim={claimDraft}
+            onPublished={async (result, validation) => {
+              const at = new Date().toISOString();
+              const next = acceptValidation(draft, validation);
+              const publishedDraft: PackageDraft = {
+                ...next,
+                publication: {
+                  remotePackageId: result.packageId,
+                  slug: result.slug,
+                  lastPublishedVersion: result.version,
+                  publishedChecksum: validation.summary.sourceChecksum,
+                  publishedAt: result.publishedAt,
+                },
+                updatedAt: at,
+                commands: [
+                  ...next.commands.slice(-49),
+                  {
+                    id: crypto.randomUUID(),
+                    label: `Publish ${result.version}`,
+                    at,
+                    revision: next.revision,
+                  },
+                ],
+              };
+              await store?.drafts.put(publishedDraft);
+              setDraft(publishedDraft);
+            }}
+          />
         ) : draft.editor.section === "preview" ? (
           <section className="studio-preview">
             <header>

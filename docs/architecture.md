@@ -43,11 +43,18 @@ account UI ──────────────────────> p
                                         +─ Supabase adapter
                                         +─ Auth session + refresh
                                         +─ public profile queries under RLS
+
+Studio publish ──same-origin──> Next.js publishing route
+        |                               |
+        +─ real worker validation       +─ re-hash canonical archive
+        +─ canonical source ZIP         +─ private Supabase Storage upload
+                                        +─ controlled database finalization
 ```
 
-Supabase is optional and owns only identity and public profiles. Server Components and the request
-proxy use cookie-backed account sessions where needed; imported package execution remains entirely
-in the browser.
+Supabase is optional and owns identity, public profiles, repository metadata, package ownership,
+visibility, and canonical published source objects. Server Components and the request proxy use
+cookie-backed account sessions where needed; imported package execution remains entirely in the
+browser.
 
 ## Route layouts
 
@@ -92,6 +99,11 @@ Drafts, library entries, imported packages, and compilations can carry an option
 user-ownership reference. Existing records remain unclaimed. Claiming is explicit, and neither
 session restoration nor profile updates enumerate or mutate IndexedDB.
 
+A published draft adds only a remote package ID, stable slug, last version, checksum, and publishing
+timestamp to its existing IndexedDB record. Publication never removes the draft, learner progress,
+library state, or compilation history. Later local edits remain local and require a distinct
+semantic version to publish.
+
 ## Preview isolation
 
 Compiled HTML is read from the generated ZIP and passed to an iframe through `srcDoc`. The iframe
@@ -101,6 +113,6 @@ revoked immediately after dispatch.
 
 ## Deferred server work
 
-Publishing, repository queries, organization membership, moderation, storage uploads, search, and
-synchronization remain deferred interfaces. Local compilation, drafts, progress, and library access
-are account-independent.
+Discovery/search ranking, organization membership, moderation, derived artifact uploads, and every
+form of draft, progress, library, and compilation-history synchronization remain deferred. Local
+compilation, drafts, progress, and library access are account-independent.

@@ -1,7 +1,10 @@
 import type {
+  McfVersion,
   PackageId,
+  PackageKind,
   PackageManifest,
   PackageVisibility,
+  ValidationSummary,
 } from "@theoria/package-model";
 
 export type AuthEvent =
@@ -100,23 +103,93 @@ export interface RepositoryQuery {
 }
 
 export interface RepositoryResult {
-  readonly packages: readonly PackageManifest[];
+  readonly packages: readonly PublishedPackage[];
   readonly nextCursor?: string;
+}
+
+export interface PublishedPackageVersion {
+  readonly id: string;
+  readonly packageId: string;
+  readonly version: string;
+  readonly mcfVersion: McfVersion;
+  readonly packageKind: PackageKind;
+  readonly sourceStoragePath: string;
+  readonly sourceChecksum: string;
+  readonly manifestSummary: PackageManifest & Readonly<Record<string, unknown>>;
+  readonly validationSummary: ValidationSummary;
+  readonly releaseNotes: string;
+  readonly publishedAt: string;
+}
+
+export interface PublishedPackage {
+  readonly id: string;
+  readonly ownerId: string;
+  readonly slug: string;
+  readonly title: string;
+  readonly description: string;
+  readonly visibility: PackageVisibility;
+  readonly latestVersionId?: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly creator: PublicProfile;
+  readonly versions: readonly PublishedPackageVersion[];
 }
 
 export interface RepositoryClient {
   search(query: RepositoryQuery): Promise<RepositoryResult>;
-  get(id: PackageId): Promise<PackageManifest | null>;
+  get(id: PackageId): Promise<PublishedPackage | null>;
+  getBySlug(slug: string): Promise<PublishedPackage | null>;
+  getVersion(
+    slug: string,
+    version: string,
+  ): Promise<{
+    readonly package: PublishedPackage;
+    readonly version: PublishedPackageVersion;
+  } | null>;
+  downloadSource(slug: string, version: string): Promise<Blob>;
 }
 
 export interface PublishingRequest {
-  readonly packageId: PackageId;
+  readonly packageId?: string;
+  readonly slug: string;
+  readonly title: string;
+  readonly description: string;
   readonly visibility: PackageVisibility;
+  readonly version: string;
+  readonly mcfVersion: McfVersion;
+  readonly packageKind: PackageKind;
+  readonly sourceChecksum: string;
+  readonly manifestSummary: PackageManifest & Readonly<Record<string, unknown>>;
+  readonly validationSummary: ValidationSummary;
+  readonly releaseNotes: string;
   readonly archive: Blob;
 }
 
+export interface PublishingResult {
+  readonly packageId: string;
+  readonly versionId: string;
+  readonly slug: string;
+  readonly version: string;
+  readonly publishedAt: string;
+}
+
+export type PublishingPhase =
+  | "checking"
+  | "uploading"
+  | "finalizing"
+  | "complete";
+
+export interface PublishingOptions {
+  readonly signal?: AbortSignal;
+  readonly onProgress?: (phase: PublishingPhase, percentage: number) => void;
+}
+
 export interface PublishingClient {
-  publish(request: PublishingRequest): Promise<{ readonly releaseId: string }>;
+  slugAvailable(slug: string, packageId?: string): Promise<boolean>;
+  publish(
+    request: PublishingRequest,
+    options?: PublishingOptions,
+  ): Promise<PublishingResult>;
 }
 
 export interface SyncClient {
@@ -127,8 +200,8 @@ export interface SyncClient {
 export interface PlatformClient {
   readonly authentication: AuthenticationClient;
   readonly profiles: ProfileClient;
-  readonly repository?: RepositoryClient;
-  readonly publishing?: PublishingClient;
+  readonly repository: RepositoryClient;
+  readonly publishing: PublishingClient;
   readonly sync?: SyncClient;
 }
 
@@ -138,6 +211,9 @@ const unavailable = (): Error =>
   );
 
 export function createUnavailablePlatformClient(): PlatformClient {
+  const deferred = (): never => {
+    throw unavailable();
+  };
   return {
     authentication: {
       configured: false,
@@ -178,6 +254,31 @@ export function createUnavailablePlatformClient(): PlatformClient {
         throw unavailable();
       },
     },
+    repository: {
+      async search() {
+        return { packages: [] };
+      },
+      async get() {
+        return null;
+      },
+      async getBySlug() {
+        return null;
+      },
+      async getVersion() {
+        return null;
+      },
+      async downloadSource() {
+        return deferred();
+      },
+    },
+    publishing: {
+      async slugAvailable() {
+        return deferred();
+      },
+      async publish() {
+        return deferred();
+      },
+    },
   };
 }
 
@@ -185,3 +286,5 @@ export {
   createSupabasePlatformClient,
   type SupabaseDatabase,
 } from "./supabase-adapter";
+export { PlatformOperationError } from "./errors";
+export { createHttpPublishingClient } from "./http-publishing";

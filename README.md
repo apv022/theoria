@@ -23,12 +23,15 @@ runtime, Creation Studio for MCF 1.0 and 1.1, and optional Supabase accounts.
   secure assets, real validation, reader preview, and source/compiled export.
 - Optional email/password accounts, persistent sessions, public profiles, recovery flows, and
   explicit local ownership claims through an isolated platform adapter.
+- Authenticated publication of real browser-validated canonical `.mcf.zip` sources as immutable,
+  versioned public, unlisted, or private repository packages.
 - Target-local fixtures representing MCF 1.0, compact MCF 1.1, and the authoring masterclass.
 
 Question-bank and asset-collection packages validate but do not open in the learner. Manual work is
 saved as pending review and is never assigned an invented grade. Remote media remains
-network-dependent. Publishing, synchronization, repository search, collaborative editing, and LMS
-behavior are intentionally deferred. Signing in never uploads or merges browser-local records.
+network-dependent. Repository search/ranking, synchronization, collaborative editing, and LMS
+behavior are intentionally deferred. Signing in never uploads or merges browser-local records;
+only an explicit publish action uploads its current draft source archive.
 
 ## Requirements
 
@@ -82,11 +85,12 @@ scripts run during installation.
 | `packages/mcf-browser`     | Secure import, virtual filesystem, worker adapter, validation, and compilation |
 | `packages/local-store`     | IndexedDB repositories                                                         |
 | `packages/reader`          | Rendering, evaluation, completion, and resumable learner runtime               |
-| `packages/platform-client` | Auth/profile contracts and isolated Supabase adapter                           |
+| `packages/platform-client` | Auth, profiles, repository, publishing, and isolated Supabase adapter          |
 | `packages/ui`              | Small shared layout and control vocabulary                                     |
 | `fixtures`                 | Fixture preparation policy; generated fixtures stay local                      |
 | `docs`                     | Architecture and integration decisions                                         |
 
-Start with [architecture.md](docs/architecture.md), [authentication.md](docs/authentication.md),
+Start with [architecture.md](docs/architecture.md), [publishing.md](docs/publishing.md),
+[package-versioning.md](docs/package-versioning.md), [authentication.md](docs/authentication.md),
 [learning-and-reader.md](docs/learning-and-reader.md), and
 [mcf-browser-integration.md](docs/mcf-browser-integration.md).

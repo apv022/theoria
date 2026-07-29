@@ -71,9 +71,18 @@ export interface PackageDraft {
   readonly sourceChecksum?: string;
   readonly latestCompilationId?: string;
   readonly owner?: LocalOwnershipReference;
+  readonly publication?: DraftPublicationReference;
   readonly editor: DraftEditorState;
   readonly commands: readonly DraftCommandRecord[];
   readonly validation: ValidationSummary;
+}
+
+export interface DraftPublicationReference {
+  readonly remotePackageId: string;
+  readonly slug: string;
+  readonly lastPublishedVersion: string;
+  readonly publishedChecksum: string;
+  readonly publishedAt: string;
 }
 
 export interface DraftSourceFile {
@@ -91,7 +100,8 @@ export interface DraftEditorState {
     | "assets"
     | "metadata"
     | "source"
-    | "preview";
+    | "preview"
+    | "publish";
   readonly selectedPath?: string;
   readonly selectedChapterId?: string;
   readonly selectedLessonId?: string;

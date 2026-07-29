@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  createHttpPublishingClient,
   createSupabasePlatformClient,
   createUnavailablePlatformClient,
   type PlatformClient,
@@ -18,8 +19,9 @@ export function browserPlatformClient(): PlatformClient {
     singleton = createUnavailablePlatformClient();
     return singleton;
   }
-  singleton = createSupabasePlatformClient(
+  const client = createSupabasePlatformClient(
     createBrowserClient<SupabaseDatabase>(url, key),
   );
+  singleton = { ...client, publishing: createHttpPublishingClient() };
   return singleton;
 }

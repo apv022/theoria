@@ -13,6 +13,9 @@ export const config = {
     "/reset-password",
     "/settings/:path*",
     "/profiles/:path*",
+    "/packages/:path*",
+    "/api/publishing/:path*",
+    "/api/packages/:path*",
     "/auth/:path*",
   ],
 };
