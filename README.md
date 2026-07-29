@@ -1,8 +1,8 @@
 # Theoria
 
 Theoria is a repository-first, local-first home for portable MCF learning packages. This repository
-contains the application foundation, a real browser compiler, and a complete local-first learner
-runtime for MCF 1.0 and 1.1.
+contains the application foundation, a real browser compiler, a complete local-first learner
+runtime, and Creation Studio for MCF 1.0 and 1.1.
 
 ## What works
 
@@ -19,13 +19,14 @@ runtime for MCF 1.0 and 1.1.
 - Focused course, module, and lesson reading with resumable responses, scoring, completion,
   assignments, rubrics, and progress.
 - A same-origin offline shell; opened packages and reader routes remain usable without a network.
+- A source-first Creation Studio with autosaved drafts, visual builders, direct source editing,
+  secure assets, real validation, reader preview, and source/compiled export.
 - Target-local fixtures representing MCF 1.0, compact MCF 1.1, and the authoring masterclass.
 
 Question-bank and asset-collection packages validate but do not open in the learner. Manual work is
 saved as pending review and is never assigned an invented grade. Remote media remains
-network-dependent. Full
-Studio authoring, publishing, accounts, synchronization, repository search, and LMS behavior are
-intentionally deferred.
+network-dependent. Publishing, accounts, synchronization, repository search, collaborative
+editing, and LMS behavior are intentionally deferred.
 
 ## Requirements
 
@@ -41,7 +42,8 @@ corepack pnpm install
 corepack pnpm dev
 ```
 
-Open `http://localhost:3000`. The local library is at `/library` and the compiler is at `/compile`.
+Open `http://localhost:3000`. Creation Studio is at `/studio`, the local library is at `/library`,
+and the compiler is at `/compile`.
 
 ## Verification
 
@@ -67,6 +69,7 @@ scripts run during installation.
 | -------------------------- | ------------------------------------------------------------------------------ |
 | `apps/web`                 | Next.js App Router application and compiler interface                          |
 | `packages/package-model`   | Framework-independent package and local record types                           |
+| `packages/authoring`       | Canonical draft transformations and deterministic MCF source generation        |
 | `packages/mcf-browser`     | Secure import, virtual filesystem, worker adapter, validation, and compilation |
 | `packages/local-store`     | IndexedDB repositories                                                         |
 | `packages/reader`          | Rendering, evaluation, completion, and resumable learner runtime               |

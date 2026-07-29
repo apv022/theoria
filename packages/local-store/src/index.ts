@@ -99,7 +99,7 @@ export class IndexedDbLocalStore implements LocalStore {
   ) {}
 
   private open(): Promise<IDBDatabase> {
-    const request = this.indexedDb.open(this.databaseName, 3);
+    const request = this.indexedDb.open(this.databaseName, 4);
     request.onupgradeneeded = () => {
       const database = request.result;
       if (!database.objectStoreNames.contains("drafts")) {
@@ -115,8 +115,9 @@ export class IndexedDbLocalStore implements LocalStore {
         compilations.createIndex("createdAt", "createdAt");
         compilations.createIndex("sourceChecksum", "sourceChecksum");
       }
-      // v2 → v3 is additive. Existing progress records remain readable and are
-      // replaced only when a learner opens that exact library package.
+      // v2 → v3 and v3 → v4 are additive. Draft schema migration is performed
+      // record-by-record by the authoring domain so source blobs are never
+      // rewritten merely by opening the database.
       if (!database.objectStoreNames.contains("library")) {
         database.createObjectStore("library", { keyPath: "packageId" });
       }

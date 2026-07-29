@@ -8,6 +8,7 @@ const browserSource = path.resolve(root, "../../packages/mcf-browser/src");
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: [
+    "@theoria/authoring",
     "@theoria/mcf-browser",
     "@theoria/local-store",
     "@theoria/package-model",

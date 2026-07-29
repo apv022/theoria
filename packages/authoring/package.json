@@ -1,0 +1,20 @@
+{
+  "name": "@theoria/authoring",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "tsx --test test/*.test.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@theoria/mcf-browser": "workspace:*",
+    "@theoria/package-model": "workspace:*",
+    "yaml": "2.9.0"
+  },
+  "devDependencies": {
+    "mcf-npm": "file:../../vendor/mcf-npm-1.1.0.tgz"
+  }
+}

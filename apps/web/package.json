@@ -8,6 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@theoria/authoring": "workspace:*",
     "@theoria/mcf-browser": "workspace:*",
     "@theoria/local-store": "workspace:*",
     "@theoria/package-model": "workspace:*",

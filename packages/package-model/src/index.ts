@@ -48,13 +48,56 @@ export interface ValidationSummary {
 }
 
 export interface PackageDraft {
+  readonly schema: 1;
   readonly id: DraftId;
   readonly title: string;
   readonly kind: PackageKind;
   readonly mcf: McfVersion;
+  readonly createdAt: string;
   readonly updatedAt: string;
-  readonly sourceFiles: readonly string[];
+  readonly revision: number;
+  readonly sourceFiles: readonly DraftSourceFile[];
+  readonly normalizedPackage?: unknown;
+  readonly sourceMode: "generated" | "imported-preserved" | "source-edited";
+  readonly visualEditing: "supported" | "source-only" | "requires-regeneration";
+  readonly originalSourceArchive?: Blob;
+  readonly originalFilename?: string;
+  readonly sourceChecksum?: string;
+  readonly latestCompilationId?: string;
+  readonly editor: DraftEditorState;
+  readonly commands: readonly DraftCommandRecord[];
   readonly validation: ValidationSummary;
+}
+
+export interface DraftSourceFile {
+  readonly path: string;
+  readonly kind: "text" | "binary";
+  readonly bytes: ArrayBuffer;
+  readonly mediaType?: string;
+  readonly checksum?: string;
+}
+
+export interface DraftEditorState {
+  readonly section:
+    | "content"
+    | "questions"
+    | "assets"
+    | "metadata"
+    | "source"
+    | "preview";
+  readonly selectedPath?: string;
+  readonly selectedChapterId?: string;
+  readonly selectedLessonId?: string;
+  readonly selectedActivityId?: string;
+  readonly selectedQuestionId?: string;
+  readonly previewSize: "desktop" | "mobile";
+}
+
+export interface DraftCommandRecord {
+  readonly id: string;
+  readonly label: string;
+  readonly at: string;
+  readonly revision: number;
 }
 
 export interface LibraryEntry {

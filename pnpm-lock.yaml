@@ -53,6 +53,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@theoria/authoring':
+        specifier: workspace:*
+        version: link:../../packages/authoring
       '@theoria/local-store':
         specifier: workspace:*
         version: link:../../packages/local-store
@@ -84,6 +87,22 @@ importers:
       '@types/react-dom':
         specifier: 19.1.7
         version: 19.1.7(@types/react@19.1.9)
+
+  packages/authoring:
+    dependencies:
+      '@theoria/mcf-browser':
+        specifier: workspace:*
+        version: link:../mcf-browser
+      '@theoria/package-model':
+        specifier: workspace:*
+        version: link:../package-model
+      yaml:
+        specifier: 2.9.0
+        version: 2.9.0
+    devDependencies:
+      mcf-npm:
+        specifier: file:../../vendor/mcf-npm-1.1.0.tgz
+        version: file:vendor/mcf-npm-1.1.0.tgz
 
   packages/local-store:
     dependencies:
@@ -1833,10 +1852,6 @@ packages:
     resolution: {integrity: sha512-XCHRdUw4lf3SKBaJe4EvgqIuWwkPSo9XoeO8GjQW94Bp7TWv9hNhzZjZ+OH9yf1UmLygb7DIT5GSFQiyt16zYg==}
     hasBin: true
 
-  katex@0.16.47:
-    resolution: {integrity: sha512-Eeo8Ys1doU1z+x8AZsPpQu+p/QcZBI5PeOo7QGQdy2x2m0MU/hYagBbGOmXwr5KVbEfVuWv9LpnQWeehogurjg==}
-    hasBin: true
-
   keyv@4.5.4:
     resolution: {integrity: sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw==}
 
@@ -1873,11 +1888,6 @@ packages:
 
   marked@16.1.1:
     resolution: {integrity: sha512-ij/2lXfCRT71L6u0M29tJPhP0bM5shLL3u5BePhFwPELj2blMJ6GDtD7PfJhRLhJ/c2UwrK17ySVcDzy2YHjHQ==}
-    engines: {node: '>= 20'}
-    hasBin: true
-
-  marked@16.4.2:
-    resolution: {integrity: sha512-TI3V8YYWvkVf3KJe1dRkpnjs68JUPyEa5vjKrp1XEEJUAOaQc+Qj+L1qWbPd0SJuAdQkFU0h73sXXqwDYxsiDA==}
     engines: {node: '>= 20'}
     hasBin: true
 
@@ -4269,10 +4279,6 @@ snapshots:
     dependencies:
       commander: 8.3.0
 
-  katex@0.16.47:
-    dependencies:
-      commander: 8.3.0
-
   keyv@4.5.4:
     dependencies:
       json-buffer: 3.0.1
@@ -4310,8 +4316,6 @@ snapshots:
 
   marked@16.1.1: {}
 
-  marked@16.4.2: {}
-
   math-intrinsics@1.1.0: {}
 
   mcf-npm@file:vendor/mcf-npm-1.1.0.tgz:
@@ -4319,8 +4323,8 @@ snapshots:
       bcp-47: 2.1.1
       commander: 14.0.3
       js-yaml: 4.3.0
-      katex: 0.16.47
-      marked: 16.4.2
+      katex: 0.16.22
+      marked: 16.1.1
       sanitize-html: 2.17.6
       yaml: 2.9.0
       yauzl: 3.4.0

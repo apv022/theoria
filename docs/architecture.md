@@ -26,6 +26,17 @@ library / reader client ──────────> the same Web Worker norm
         +─ IndexedDB package references + learner records
         +─ safe rich-content rendering + local object URLs
         +─ service-worker application shell
+
+Studio client ───────────────────> canonical source-first draft
+        |                               |
+        |                               +─ exact secure virtual files
+        |                               +─ last worker-normalized package
+        |                               +─ stable-ID authoring commands
+        |                               +─ deterministic MCF serializer
+        |
+        +─ debounced mcf-browser validation
+        +─ IndexedDB autosave
+        +─ compile → real /read preview
 ```
 
 There is no application backend and no Supabase configuration. Server Components currently provide
@@ -43,14 +54,15 @@ static route shells only; they do not execute imported packages.
 
 ## Dependency direction
 
-`package-model` is the leaf domain package. `mcf-browser`, `local-store`, `reader`, and
-`platform-client` depend on it. `reader` consumes the normalized `mcf-browser` model but contains
-no React or storage code. `ui` depends only on React/Next peer APIs. `apps/web` composes them.
+`package-model` is the leaf domain package. `mcf-browser`, `local-store`, `reader`, `authoring`, and
+`platform-client` depend on it. `reader` consumes the normalized `mcf-browser` model but contains no
+React or storage code. `authoring` owns draft transformations and source generation, not parsing.
+`ui` depends only on React/Next peer APIs. `apps/web` composes them.
 Platform interfaces do not leak into package execution or IndexedDB.
 
 ## Local-first ownership
 
-Database `theoria`, schema version 3, contains:
+Database `theoria`, schema version 4, contains:
 
 - `drafts`, keyed by draft ID;
 - `packages`, keyed by package ID;
@@ -65,7 +77,8 @@ upload a record without changing its local identity or taking over local writes.
 Library entries reference either an imported package record or an existing compilation record; they
 do not duplicate large archives. Learner progress has stable package/version/content IDs,
 monotonic revisions, timestamps, response and assessment state, and persisted random orders.
-The v2-to-v3 upgrade is additive and leaves compiler history untouched.
+The v2-to-v3 and v3-to-v4 upgrades are additive and leave compiler, library, package, and progress
+history untouched.
 
 ## Preview isolation
 
