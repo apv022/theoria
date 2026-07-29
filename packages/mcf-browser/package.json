@@ -1,0 +1,22 @@
+{
+  "name": "@theoria/mcf-browser",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "tsx --test test/*.test.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@theoria/package-model": "workspace:*",
+    "@noble/hashes": "2.2.0",
+    "fflate": "0.8.3",
+    "mcf-npm": "file:../../vendor/mcf-npm-1.1.0.tgz",
+    "path-browserify": "1.0.1"
+  },
+  "devDependencies": {
+    "@types/path-browserify": "1.0.3"
+  }
+}

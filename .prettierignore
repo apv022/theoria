@@ -1,0 +1,9 @@
+**/.next/**
+**/node_modules/**
+**/.pnpm-store/**
+**/.pnpm-cache/**
+**/.pnpm-state/**
+**/.npm-cache/**
+**/.corepack/**
+fixtures/local/**
+pnpm-lock.yaml

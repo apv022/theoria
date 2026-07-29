@@ -1,0 +1,12 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/package-model" },
+    { "path": "packages/mcf-browser" },
+    { "path": "packages/local-store" },
+    { "path": "packages/platform-client" },
+    { "path": "packages/reader" },
+    { "path": "packages/ui" },
+    { "path": "apps/web" }
+  ]
+}

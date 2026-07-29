@@ -1,0 +1,25 @@
+{
+  "name": "@theoria/reader",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "tsx --test test/*.test.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@theoria/mcf-browser": "workspace:*",
+    "@theoria/package-model": "workspace:*",
+    "dompurify": "3.2.6",
+    "katex": "0.16.22",
+    "marked": "16.1.1"
+  },
+  "devDependencies": {
+    "@types/dompurify": "3.0.5",
+    "@types/jsdom": "21.1.7",
+    "@types/katex": "0.16.7",
+    "jsdom": "26.1.0"
+  }
+}
