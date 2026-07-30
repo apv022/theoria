@@ -63,6 +63,7 @@ import {
 } from "react";
 import { useAuth } from "./auth-provider";
 import { StudioPublishingPanel } from "./studio-publishing-panel";
+import { SyncStatus } from "./sync-status";
 
 const store =
   typeof indexedDB === "undefined" ? undefined : new IndexedDbLocalStore();
@@ -1372,7 +1373,7 @@ export function StudioDraftWorkspace({
   const claimDraft = () => {
     if (!identity) return;
     const at = new Date().toISOString();
-    setDraft({
+    const claimed: PackageDraft = {
       ...draft,
       owner: {
         type: "user",
@@ -1390,7 +1391,26 @@ export function StudioDraftWorkspace({
           revision: draft.revision + 1,
         },
       ],
-    });
+    };
+    if (!store) {
+      setDraft(claimed);
+      return;
+    }
+    setSaveState("saving");
+    void store.drafts
+      .put(claimed)
+      .then(() => {
+        setDraft(claimed);
+        setSaveState("saved");
+      })
+      .catch((reason) => {
+        setSaveState("error");
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : "The local draft could not be claimed.",
+        );
+      });
   };
 
   const compile = async (openPreview: boolean) => {
@@ -1719,6 +1739,7 @@ export function StudioDraftWorkspace({
             >
               {draft.validation.state}
             </Status>
+            <SyncStatus category="draft" stableId={draft.id} />
             {identity ? (
               draft.owner?.userId === identity.id ? (
                 <Status tone="positive">

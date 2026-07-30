@@ -42,7 +42,48 @@ const convertDiagnostic = (value: Diagnostic): ValidationDiagnostic => ({
   ...(value.object_id === undefined ? {} : { objectId: value.object_id }),
 });
 
-function manifestOf(value: McfPackage): PackageManifest {
+const stringList = (value: unknown): readonly string[] | undefined =>
+  Array.isArray(value) && value.every((item) => typeof item === "string")
+    ? value
+    : undefined;
+
+const packageLevel = (value: unknown): PackageManifest["level"] | undefined => {
+  if (typeof value === "string") return { identifier: value };
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    return undefined;
+  const record = value as Record<string, unknown>;
+  const label = typeof record.label === "string" ? record.label : undefined;
+  const identifier =
+    typeof record.identifier === "string" ? record.identifier : undefined;
+  return label || identifier
+    ? { ...(label ? { label } : {}), ...(identifier ? { identifier } : {}) }
+    : undefined;
+};
+
+const learningOutcomes = (
+  value: unknown,
+): PackageManifest["learningOutcomes"] | undefined => {
+  if (!Array.isArray(value)) return undefined;
+  const outcomes = value.flatMap((item) => {
+    if (typeof item === "string") return [{ statement: item }];
+    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+    const record = item as Record<string, unknown>;
+    if (typeof record.statement !== "string") return [];
+    return [
+      {
+        ...(typeof record.id === "string" ? { id: record.id } : {}),
+        statement: record.statement,
+      },
+    ];
+  });
+  return outcomes.length ? outcomes : undefined;
+};
+
+export function packageManifestFromMcf(value: McfPackage): PackageManifest {
+  const subjects = stringList(value.subjects);
+  const keywords = stringList(value.keywords);
+  const level = packageLevel(value.level);
+  const outcomes = learningOutcomes(value.learning_outcomes);
   return {
     mcf: value.mcf,
     kind: value.kind,
@@ -55,6 +96,13 @@ function manifestOf(value: McfPackage): PackageManifest {
       : { description: value.description }),
     authors: (value.authors ?? []).map((name) => ({ name })),
     ...(value.license === undefined ? {} : { license: value.license }),
+    ...(subjects ? { subjects } : {}),
+    ...(keywords ? { keywords } : {}),
+    ...(level ? { level } : {}),
+    ...(outcomes ? { learningOutcomes: outcomes } : {}),
+    ...(typeof value.estimated_duration === "string"
+      ? { estimatedDuration: value.estimated_duration }
+      : {}),
   };
 }
 
@@ -124,7 +172,7 @@ export async function executeEngineRequest(
     if (isCancelled()) return { requestId, operation, status: "cancelled" };
     const counts = countPackage(result.package);
     const summary = {
-      manifest: manifestOf(result.package),
+      manifest: packageManifestFromMcf(result.package),
       lessonCount: counts.lessons,
       activityCount: counts.activities,
       questionCount: counts.questions,

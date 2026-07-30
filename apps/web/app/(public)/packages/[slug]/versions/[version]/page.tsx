@@ -94,14 +94,58 @@ export default async function PackageVersionPage({
               : "Not declared"}
           </dd>
         </div>
+        <div>
+          <dt>Subjects</dt>
+          <dd>
+            {manifest.subjects?.length
+              ? manifest.subjects.join(", ")
+              : "Not declared"}
+          </dd>
+        </div>
+        <div>
+          <dt>Level</dt>
+          <dd>
+            {manifest.level?.label ??
+              manifest.level?.identifier ??
+              "Not declared"}
+          </dd>
+        </div>
+        <div>
+          <dt>Structure</dt>
+          <dd>
+            {String(release.version.manifestSummary.lessonCount ?? 0)} lessons ·{" "}
+            {String(release.version.manifestSummary.activityCount ?? 0)}{" "}
+            activities ·{" "}
+            {String(release.version.manifestSummary.questionCount ?? 0)}{" "}
+            questions
+          </dd>
+        </div>
       </dl>
+      {manifest.learningOutcomes?.length ? (
+        <section className="learning-outcomes">
+          <h2>Learning outcomes</h2>
+          <ol>
+            {manifest.learningOutcomes.map((outcome, index) => (
+              <li key={outcome.id ?? `${index}-${outcome.statement}`}>
+                {outcome.statement}
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
       <section className="release-notes">
         <h2>Release notes</h2>
         <p>
           {release.version.releaseNotes || "No release notes were provided."}
         </p>
       </section>
-      <PublishedPackageActions slug={slug} version={version} />
+      <PublishedPackageActions
+        slug={slug}
+        version={version}
+        manifestId={String(manifest.id)}
+        manifestVersion={manifest.version}
+        sourceChecksum={release.version.sourceChecksum}
+      />
       <Notice title="Canonical source is immutable">
         This release points to the validated source `.mcf.zip`. Browser-compiled
         learner output is derived and is not treated as repository source.

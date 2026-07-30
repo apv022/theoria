@@ -6,6 +6,7 @@
     { "path": "packages/authoring" },
     { "path": "packages/local-store" },
     { "path": "packages/platform-client" },
+    { "path": "packages/sync" },
     { "path": "packages/reader" },
     { "path": "packages/ui" },
     { "path": "apps/web" }

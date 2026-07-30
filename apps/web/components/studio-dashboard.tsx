@@ -29,6 +29,7 @@ import {
   useState,
   type ChangeEvent,
 } from "react";
+import { SyncStatus } from "./sync-status";
 
 const store =
   typeof indexedDB === "undefined" ? undefined : new IndexedDbLocalStore();
@@ -362,6 +363,7 @@ export function StudioDashboard() {
                   <span>
                     {draft.kind} · MCF {draft.mcf}
                   </span>
+                  <SyncStatus category="draft" stableId={draft.id} />
                 </div>
                 <h3>{draft.title}</h3>
                 <p>

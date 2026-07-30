@@ -21,8 +21,15 @@ import type {
   PublishingRequest,
   PublishingResult,
   RepositoryClient,
+  RepositoryQuery,
   RepositoryResult,
+  RepositorySubject,
+  RemoteSyncCounts,
+  RemoteSyncPage,
+  RemoteSyncRecord,
   SignUpRequest,
+  SyncBlobReference,
+  SyncClient,
 } from "./index";
 import { PlatformOperationError } from "./errors";
 
@@ -65,6 +72,73 @@ type PackageVersionRow = {
   validation_summary: Record<string, unknown>;
   release_notes: string;
   published_at: string;
+};
+
+type RepositoryPackageRow = {
+  package_id: string;
+  owner_id: string;
+  slug: string;
+  title: string;
+  description: string;
+  visibility: "public";
+  latest_version_id: string;
+  package_created_at: string;
+  package_updated_at: string;
+  profile_id: string;
+  creator_handle: string;
+  creator_display_name: string;
+  creator_bio: string;
+  creator_avatar_path: string | null;
+  creator_created_at: string;
+  creator_updated_at: string;
+  version_id: string;
+  version: string;
+  mcf_version: PackageVersionRow["mcf_version"];
+  package_kind: PackageVersionRow["package_kind"];
+  source_storage_path: string;
+  source_checksum: string;
+  manifest_summary: Record<string, unknown>;
+  validation_summary: Record<string, unknown>;
+  release_notes: string;
+  published_at: string;
+  total_count: number;
+};
+
+type SyncRecordRow = {
+  owner_id: string;
+  category: RemoteSyncRecord["category"];
+  stable_id: string;
+  schema_version: number;
+  revision: number;
+  reset_generation: number;
+  source_checksum: string | null;
+  payload: Record<string, unknown>;
+  artifact_status: RemoteSyncRecord["artifactStatus"];
+  deleted: boolean;
+  updated_by_device_id: string;
+  last_operation_id: string;
+  created_at: string;
+  updated_at: string;
+  sync_cursor: number;
+};
+
+type SyncBlobRow = {
+  owner_id: string;
+  checksum: string;
+  blob_kind: SyncBlobReference["kind"];
+  storage_path: string;
+  byte_size: number;
+  content_type: string;
+  created_at: string;
+};
+
+type SyncDeviceRow = {
+  owner_id: string;
+  device_id: string;
+  device_name: string;
+  enabled: boolean;
+  created_at: string;
+  last_seen_at: string;
 };
 
 export type SupabaseDatabase = {
@@ -131,6 +205,24 @@ export type SupabaseDatabase = {
         Update: never;
         Relationships: [];
       };
+      sync_devices: {
+        Row: SyncDeviceRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      sync_records: {
+        Row: SyncRecordRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      sync_blobs: {
+        Row: SyncBlobRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -147,6 +239,30 @@ export type SupabaseDatabase = {
           candidate_version: string;
         };
         Returns: boolean;
+      };
+      repository_packages: {
+        Args: {
+          requested_query: string;
+          requested_subject: string;
+          requested_level: string;
+          requested_language: string;
+          requested_kind: string;
+          requested_mcf_version: string;
+          requested_sort: string;
+          requested_profile_handle: string;
+          requested_limit: number;
+          requested_offset: number;
+        };
+        Returns: RepositoryPackageRow[];
+      };
+      repository_subjects: {
+        Args: {
+          requested_limit: number;
+        };
+        Returns: {
+          subject: string;
+          package_count: number;
+        }[];
       };
       publish_package_version: {
         Args: {
@@ -171,6 +287,40 @@ export type SupabaseDatabase = {
           version: string;
           published_at: string;
         }[];
+      };
+      sync_register_device: {
+        Args: {
+          requested_device_id: string;
+          requested_device_name: string;
+          requested_enabled: boolean;
+        };
+        Returns: SyncDeviceRow;
+      };
+      sync_apply_record: {
+        Args: {
+          requested_category: RemoteSyncRecord["category"];
+          requested_stable_id: string;
+          requested_expected_revision: number;
+          requested_schema_version: number;
+          requested_reset_generation: number;
+          requested_source_checksum: string | null;
+          requested_payload: Record<string, unknown>;
+          requested_artifact_status: RemoteSyncRecord["artifactStatus"];
+          requested_deleted: boolean;
+          requested_device_id: string;
+          requested_operation_id: string;
+        };
+        Returns: SyncRecordRow;
+      };
+      sync_register_blob: {
+        Args: {
+          requested_checksum: string;
+          requested_blob_kind: SyncBlobReference["kind"];
+          requested_storage_path: string;
+          requested_byte_size: number;
+          requested_content_type: string;
+        };
+        Returns: SyncBlobRow;
       };
     };
     Enums: Record<string, never>;
@@ -361,13 +511,16 @@ class SupabaseAuthentication implements AuthenticationClient {
       (event: AuthChangeEvent, session: Session | null) => {
         void this.identity(session?.user ?? null)
           .then((identity) => listener({ event: eventName(event), identity }))
-          .catch(() =>
-            listener({
-              event:
-                event === "SIGNED_OUT" ? "signed-out" : ("expired" as const),
-              identity: null,
-            }),
-          );
+          .catch(() => {
+            // Profile hydration is a network read. A transient offline failure
+            // must not turn a still-present local Auth session into a logout.
+            if (!session)
+              listener({
+                event:
+                  event === "SIGNED_OUT" ? "signed-out" : ("expired" as const),
+                identity: null,
+              });
+          });
       },
     );
     return () => subscription.unsubscribe();
@@ -400,16 +553,146 @@ class SupabaseRepository implements RepositoryClient {
     private readonly profiles: SupabaseProfiles,
   ) {}
 
-  async search(): Promise<RepositoryResult> {
-    return { packages: [] };
+  async search(query: RepositoryQuery): Promise<RepositoryResult> {
+    return this.list(query);
+  }
+
+  async listRecent(limit = 6): Promise<readonly PublishedPackage[]> {
+    return (
+      await this.list({
+        sort: "newest",
+        page: 1,
+        pageSize: Math.min(12, Math.max(1, Math.trunc(limit))),
+      })
+    ).packages;
+  }
+
+  async listProfilePackages(
+    handle: string,
+    query: Pick<RepositoryQuery, "page" | "pageSize" | "sort"> = {},
+  ): Promise<RepositoryResult> {
+    return this.list(query, handle.trim().toLowerCase());
+  }
+
+  async listSubjects(limit = 8): Promise<readonly RepositorySubject[]> {
+    const { data, error } = await this.client.rpc("repository_subjects", {
+      requested_limit: Math.min(24, Math.max(1, Math.trunc(limit))),
+    });
+    if (error)
+      throw new PlatformOperationError(
+        "REPOSITORY_UNAVAILABLE",
+        error.message,
+        true,
+      );
+    return data.map((item) => ({
+      value: item.subject,
+      packageCount: Number(item.package_count),
+    }));
+  }
+
+  private async list(
+    query: RepositoryQuery,
+    profileHandle = "",
+  ): Promise<RepositoryResult> {
+    const page = Math.max(1, Math.trunc(query.page ?? 1));
+    const pageSize = Math.min(
+      24,
+      Math.max(1, Math.trunc(query.pageSize ?? 12)),
+    );
+    const sort = query.sort ?? (query.text ? "relevance" : "newest");
+    const { data, error } = await this.client.rpc("repository_packages", {
+      requested_query: query.text?.trim() ?? "",
+      requested_subject: query.subject?.trim().toLowerCase() ?? "",
+      requested_level: query.level?.trim().toLowerCase() ?? "",
+      requested_language: query.language?.trim().toLowerCase() ?? "",
+      requested_kind: query.kind ?? "",
+      requested_mcf_version: query.mcfVersion ?? "",
+      requested_sort: sort,
+      requested_profile_handle: profileHandle,
+      requested_limit: pageSize,
+      requested_offset: (page - 1) * pageSize,
+    });
+    if (error)
+      throw new PlatformOperationError(
+        "REPOSITORY_UNAVAILABLE",
+        error.message,
+        true,
+      );
+    const total = Number(data[0]?.total_count ?? 0);
+    return {
+      packages: data.map((row) => this.packageFromRepositoryRow(row)),
+      total,
+      page,
+      pageSize,
+      totalPages: total ? Math.ceil(total / pageSize) : 0,
+    };
+  }
+
+  private packageFromRepositoryRow(
+    row: RepositoryPackageRow,
+  ): PublishedPackage {
+    const creator = profileFromRow({
+      id: row.profile_id,
+      handle: row.creator_handle,
+      display_name: row.creator_display_name,
+      bio: row.creator_bio,
+      avatar_path: row.creator_avatar_path,
+      created_at: row.creator_created_at,
+      updated_at: row.creator_updated_at,
+    });
+    const version = versionFromRow({
+      id: row.version_id,
+      package_id: row.package_id,
+      version: row.version,
+      mcf_version: row.mcf_version,
+      package_kind: row.package_kind,
+      source_storage_path: row.source_storage_path,
+      source_checksum: row.source_checksum,
+      manifest_summary: row.manifest_summary,
+      validation_summary: row.validation_summary,
+      release_notes: row.release_notes,
+      published_at: row.published_at,
+    });
+    return {
+      id: row.package_id,
+      ownerId: row.owner_id,
+      slug: row.slug,
+      title: row.title,
+      description: row.description,
+      visibility: row.visibility,
+      latestVersionId: row.latest_version_id,
+      createdAt: row.package_created_at,
+      updatedAt: row.package_updated_at,
+      creator,
+      versions: [version],
+    };
   }
 
   async get(id: Parameters<RepositoryClient["get"]>[0]) {
-    return this.getPackage("id", id);
+    try {
+      return await this.getPackage("id", id);
+    } catch (reason) {
+      throw this.operationError(reason);
+    }
   }
 
   async getBySlug(slug: string) {
-    return this.getPackage("slug", slug.trim().toLowerCase());
+    try {
+      return await this.getPackage("slug", slug.trim().toLowerCase());
+    } catch (reason) {
+      throw this.operationError(reason);
+    }
+  }
+
+  private operationError(reason: unknown): PlatformOperationError {
+    if (reason instanceof PlatformOperationError) return reason;
+    return new PlatformOperationError(
+      "REPOSITORY_UNAVAILABLE",
+      reason instanceof Error
+        ? reason.message
+        : "The repository operation failed.",
+      true,
+    );
   }
 
   private async getPackage(field: "id" | "slug", value: string) {
@@ -466,7 +749,12 @@ class SupabaseRepository implements RepositoryClient {
     const { data, error } = await this.client.storage
       .from("package-sources")
       .download(release.version.sourceStoragePath);
-    if (error) throw error;
+    if (error)
+      throw new PlatformOperationError(
+        "SOURCE_UNAVAILABLE",
+        error.message,
+        true,
+      );
     return data;
   }
 }
@@ -602,6 +890,211 @@ class SupabasePublishing implements PublishingClient {
   }
 }
 
+const syncRecordFromRow = (row: SyncRecordRow): RemoteSyncRecord => ({
+  category: row.category,
+  stableId: row.stable_id,
+  schemaVersion: row.schema_version,
+  revision: row.revision,
+  resetGeneration: row.reset_generation,
+  ...(row.source_checksum ? { sourceChecksum: row.source_checksum } : {}),
+  payload: row.payload,
+  artifactStatus: row.artifact_status,
+  deleted: row.deleted,
+  deviceId: row.updated_by_device_id,
+  operationId: row.last_operation_id,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  cursor: Number(row.sync_cursor),
+});
+
+class SupabaseSync implements SyncClient {
+  constructor(private readonly client: SupabaseClient<SupabaseDatabase>) {}
+
+  async registerDevice(
+    deviceId: string,
+    deviceName: string,
+    enabled: boolean,
+  ): Promise<void> {
+    const { error } = await this.client.rpc("sync_register_device", {
+      requested_device_id: deviceId,
+      requested_device_name: deviceName,
+      requested_enabled: enabled,
+    });
+    if (error) throw error;
+  }
+
+  async counts(): Promise<RemoteSyncCounts> {
+    const categories = [
+      ["draft", "drafts"],
+      ["progress", "progress"],
+      ["library", "library"],
+      ["local_package", "localPackages"],
+      ["compilation", "compilations"],
+    ] as const;
+    const results = await Promise.all(
+      categories.map(async ([category]) => {
+        const { count, error } = await this.client
+          .from("sync_records")
+          .select("stable_id", { count: "exact", head: true })
+          .eq("category", category)
+          .eq("deleted", false);
+        if (error) throw error;
+        return count ?? 0;
+      }),
+    );
+    const { data: blobs, error: blobError } = await this.client
+      .from("sync_blobs")
+      .select("byte_size");
+    if (blobError) throw blobError;
+    return {
+      drafts: results[0] ?? 0,
+      progress: results[1] ?? 0,
+      library: results[2] ?? 0,
+      localPackages: results[3] ?? 0,
+      compilations: results[4] ?? 0,
+      blobs: blobs.length,
+      storageBytes: blobs.reduce(
+        (total, blob) => total + Number(blob.byte_size),
+        0,
+      ),
+    };
+  }
+
+  async list(cursor: number, limit = 100): Promise<RemoteSyncPage> {
+    const bounded = Math.min(200, Math.max(1, Math.trunc(limit)));
+    const { data, error } = await this.client
+      .from("sync_records")
+      .select(
+        "owner_id, category, stable_id, schema_version, revision, reset_generation, source_checksum, payload, artifact_status, deleted, updated_by_device_id, last_operation_id, created_at, updated_at, sync_cursor",
+      )
+      .gt("sync_cursor", Math.max(0, Math.trunc(cursor)))
+      .order("sync_cursor", { ascending: true })
+      .limit(bounded + 1);
+    if (error) throw error;
+    const hasMore = data.length > bounded;
+    const rows = hasMore ? data.slice(0, bounded) : data;
+    return {
+      records: rows.map(syncRecordFromRow),
+      nextCursor: Number(rows.at(-1)?.sync_cursor ?? cursor),
+      hasMore,
+    };
+  }
+
+  async apply(
+    record: Omit<
+      RemoteSyncRecord,
+      "revision" | "createdAt" | "updatedAt" | "cursor"
+    >,
+    expectedRevision: number,
+  ): Promise<RemoteSyncRecord> {
+    const { data, error } = await this.client.rpc("sync_apply_record", {
+      requested_category: record.category,
+      requested_stable_id: record.stableId,
+      requested_expected_revision: expectedRevision,
+      requested_schema_version: record.schemaVersion,
+      requested_reset_generation: record.resetGeneration,
+      requested_source_checksum: record.sourceChecksum ?? null,
+      requested_payload: record.payload as Record<string, unknown>,
+      requested_artifact_status: record.artifactStatus,
+      requested_deleted: record.deleted,
+      requested_device_id: record.deviceId,
+      requested_operation_id: record.operationId,
+    });
+    if (error) {
+      if (/revision conflict|40001/i.test(error.message))
+        throw new PlatformOperationError(
+          "SYNC_CONFLICT",
+          "The cloud record changed on another device.",
+          true,
+        );
+      throw error;
+    }
+    return syncRecordFromRow(data);
+  }
+
+  async uploadBlob(
+    reference: Omit<SyncBlobReference, "available">,
+    blob: Blob,
+    options: {
+      readonly signal?: AbortSignal;
+      readonly onProgress?: (percentage: number) => void;
+    } = {},
+  ): Promise<SyncBlobReference> {
+    if (options.signal?.aborted)
+      throw new DOMException("Synchronization cancelled.", "AbortError");
+    const { data: authData, error: authError } =
+      await this.client.auth.getUser();
+    if (authError || !authData.user)
+      throw new PlatformOperationError(
+        "AUTH_REQUIRED",
+        "Sign in to synchronize private data.",
+      );
+    const path = `users/${authData.user.id}/${reference.kind}/${reference.checksum}`;
+    const { data: existing, error: existingError } = await this.client
+      .from("sync_blobs")
+      .select("storage_path")
+      .eq("checksum", reference.checksum)
+      .maybeSingle();
+    if (existingError) throw existingError;
+    let storagePath = existing?.storage_path ?? path;
+    if (!existing) {
+      options.onProgress?.(10);
+      const { error: uploadError } = await this.client.storage
+        .from("account-sync")
+        .upload(path, blob, {
+          contentType: reference.contentType,
+          cacheControl: "31536000",
+          upsert: false,
+        });
+      if (uploadError && !/already exists|duplicate/i.test(uploadError.message))
+        throw uploadError;
+      if (options.signal?.aborted)
+        throw new DOMException("Synchronization cancelled.", "AbortError");
+      const { data: registered, error: registerError } = await this.client.rpc(
+        "sync_register_blob",
+        {
+          requested_checksum: reference.checksum,
+          requested_blob_kind: reference.kind,
+          requested_storage_path: path,
+          requested_byte_size: reference.byteSize,
+          requested_content_type: reference.contentType,
+        },
+      );
+      if (registerError) throw registerError;
+      storagePath = registered.storage_path;
+    }
+    options.onProgress?.(100);
+    return {
+      ...reference,
+      available: true,
+      storagePath,
+    };
+  }
+
+  async downloadBlob(reference: SyncBlobReference): Promise<Blob> {
+    if (!reference.available)
+      throw new PlatformOperationError(
+        "SYNC_ARTIFACT_UNAVAILABLE",
+        "This synchronized record has metadata only.",
+      );
+    const { data: authData, error: authError } =
+      await this.client.auth.getUser();
+    if (authError || !authData.user)
+      throw new PlatformOperationError(
+        "AUTH_REQUIRED",
+        "Sign in to restore private data.",
+      );
+    const path =
+      reference.storagePath ??
+      `users/${authData.user.id}/${reference.kind}/${reference.checksum}`;
+    const { data, error } = await this.client.storage
+      .from("account-sync")
+      .download(path);
+    if (error) throw error;
+    return data;
+  }
+}
+
 export function createSupabasePlatformClient(
   client: SupabaseClient<SupabaseDatabase>,
 ): PlatformClient {
@@ -611,5 +1104,6 @@ export function createSupabasePlatformClient(
     authentication: new SupabaseAuthentication(client, profiles),
     repository: new SupabaseRepository(client, profiles),
     publishing: new SupabasePublishing(client),
+    sync: new SupabaseSync(client),
   };
 }

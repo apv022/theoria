@@ -33,7 +33,9 @@ test("signup restores its session, edits a public profile, and explicitly claims
   await expect(
     page.getByText("Portable learning package author."),
   ).toBeVisible();
-  await expect(page.getByText("No published packages yet")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "No public packages yet" }),
+  ).toBeVisible();
 
   await page.goto("/settings");
   await expect(page.getByText("creator_one@example.test")).toBeVisible();

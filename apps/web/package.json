@@ -15,6 +15,7 @@
     "@theoria/package-model": "workspace:*",
     "@theoria/platform-client": "workspace:*",
     "@theoria/reader": "workspace:*",
+    "@theoria/sync": "workspace:*",
     "@theoria/ui": "workspace:*",
     "next": "16.2.11",
     "react": "19.1.1",

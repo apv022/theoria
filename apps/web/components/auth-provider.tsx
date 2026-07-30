@@ -5,6 +5,8 @@ import type {
   AuthEvent,
   PlatformClient,
 } from "@theoria/platform-client";
+import { IndexedDbLocalStore } from "@theoria/local-store";
+import { TheoriaSyncEngine } from "@theoria/sync";
 import {
   createContext,
   useContext,
@@ -14,6 +16,9 @@ import {
   type ReactNode,
 } from "react";
 import { browserPlatformClient } from "../lib/platform/browser";
+
+const localStore =
+  typeof indexedDB === "undefined" ? undefined : new IndexedDbLocalStore();
 
 interface AuthContextValue {
   readonly platform: PlatformClient;
@@ -67,6 +72,70 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {
       unsubscribe();
     };
   }, [platform]);
+
+  useEffect(() => {
+    if (!localStore) return;
+    let active = true;
+    let running = false;
+    let rerun = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const run = async () => {
+      if (!active) return;
+      if (running) {
+        rerun = true;
+        return;
+      }
+      const settings = await localStore.sync.settings();
+      if (!settings.enabled || settings.pausedReason === "user") return;
+      if (!navigator.onLine) {
+        if (settings.pausedReason !== "offline")
+          await localStore.sync.configure({ pausedReason: "offline" });
+        return;
+      }
+      let activeIdentity = identity;
+      if (!activeIdentity || event === "expired") {
+        try {
+          activeIdentity = await platform.authentication.currentIdentity();
+        } catch {
+          activeIdentity = null;
+        }
+        if (!activeIdentity) {
+          if (settings.pausedReason !== "expired")
+            await localStore.sync.configure({ pausedReason: "expired" });
+          return;
+        }
+        setIdentity(activeIdentity);
+        setEvent("signed-in");
+      }
+      running = true;
+      try {
+        await new TheoriaSyncEngine(localStore.sync, platform.sync).syncNow();
+      } catch {
+        // The durable outbox remains available for a later bounded retry.
+      } finally {
+        running = false;
+        if (rerun) {
+          rerun = false;
+          schedule();
+        }
+      }
+    };
+    const schedule = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => void run(), 500);
+    };
+    const retryTimer = setInterval(schedule, 2_000);
+    addEventListener("online", schedule);
+    addEventListener("theoria-sync-change", schedule);
+    schedule();
+    return () => {
+      active = false;
+      if (timer) clearTimeout(timer);
+      clearInterval(retryTimer);
+      removeEventListener("online", schedule);
+      removeEventListener("theoria-sync-change", schedule);
+    };
+  }, [event, identity, platform]);
 
   return (
     <AuthContext.Provider

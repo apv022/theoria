@@ -2,9 +2,10 @@
 
 import { WorkerMcfEngine } from "@theoria/mcf-browser";
 import { IndexedDbLocalStore } from "@theoria/local-store";
+import { packageId, type LearnerProgress } from "@theoria/package-model";
 import { localPackageId, toReaderStructure } from "@theoria/reader";
-import { Button } from "@theoria/ui";
-import { useMemo, useState } from "react";
+import { Button, LinkButton, Notice } from "@theoria/ui";
+import { useEffect, useMemo, useState } from "react";
 
 const store =
   typeof indexedDB === "undefined" ? undefined : new IndexedDbLocalStore();
@@ -12,15 +13,64 @@ const store =
 export function PublishedPackageActions({
   slug,
   version,
+  manifestId,
+  manifestVersion,
+  sourceChecksum,
 }: {
   readonly slug: string;
   readonly version: string;
+  readonly manifestId: string;
+  readonly manifestVersion: string;
+  readonly sourceChecksum: string;
 }) {
   const engine = useMemo(() => new WorkerMcfEngine(), []);
+  const localId = localPackageId(
+    packageId(manifestId),
+    manifestVersion,
+    sourceChecksum,
+  );
   const [busy, setBusy] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const [added, setAdded] = useState(false);
+  const [otherVersion, setOtherVersion] = useState(false);
+  const [progress, setProgress] = useState<LearnerProgress>();
   const [message, setMessage] = useState<string>();
   const [error, setError] = useState<string>();
   const sourceUrl = `/api/packages/${encodeURIComponent(slug)}/versions/${encodeURIComponent(version)}/source`;
+
+  useEffect(() => {
+    void (async () => {
+      if (!store) return;
+      const [entry, savedProgress, packages, library] = await Promise.all([
+        store.library.get(localId),
+        store.progress.get(localId),
+        store.packages.list(),
+        store.library.list(),
+      ]);
+      setAdded(Boolean(entry));
+      setProgress(savedProgress);
+      const libraryPackageIds = new Set(
+        library
+          .filter((item) => item.source.type === "package")
+          .map((item) =>
+            item.source.type === "package"
+              ? item.source.packageRecordId
+              : item.packageId,
+          ),
+      );
+      setOtherVersion(
+        packages.some(
+          (item) =>
+            item.id !== localId &&
+            String(item.manifest.id) === manifestId &&
+            libraryPackageIds.has(item.id),
+        ),
+      );
+    })()
+      .catch(() => setError("This browser’s library could not be inspected."))
+      .finally(() => setChecking(false));
+    return () => engine.dispose();
+  }, [engine, localId, manifestId]);
 
   const addToLibrary = () => {
     if (!store) {
@@ -62,14 +112,17 @@ export function PublishedPackageActions({
           `${result.summary.manifest.kind} packages cannot open in the learner.`,
         );
       const manifest = result.summary.manifest;
-      const id = localPackageId(
-        manifest.id,
-        manifest.version,
-        result.summary.sourceChecksum,
-      );
+      if (
+        String(manifest.id) !== manifestId ||
+        manifest.version !== manifestVersion ||
+        result.summary.sourceChecksum !== sourceChecksum
+      )
+        throw new Error(
+          "The downloaded source does not match this repository version.",
+        );
       const at = new Date().toISOString();
       await store.packages.put({
-        id,
+        id: localId,
         manifest,
         archive: new Blob([result.sourceArchive], { type: "application/zip" }),
         sourceFilename: `${slug}-${version}.mcf.zip`,
@@ -79,15 +132,17 @@ export function PublishedPackageActions({
         validation: result.validation,
       });
       await store.library.put({
-        packageId: id,
+        packageId: localId,
         title: manifest.title,
         packageKind: manifest.kind,
         mcfVersion: manifest.mcf,
         version: manifest.version,
         addedAt: at,
         origin: "repository",
-        source: { type: "package", packageRecordId: id },
+        source: { type: "package", packageRecordId: localId },
       });
+      setAdded(true);
+      setOtherVersion(false);
       setMessage(`${manifest.title} was added to this browser.`);
     })()
       .catch((reason) =>
@@ -100,14 +155,45 @@ export function PublishedPackageActions({
       .finally(() => setBusy(false));
   };
 
+  const readerHref = progress?.currentLessonId
+    ? `/read/${encodeURIComponent(localId)}/${encodeURIComponent(progress.currentLessonId)}`
+    : `/read/${encodeURIComponent(localId)}`;
+
   return (
     <div className="published-actions">
       <a className="button button-secondary" href={sourceUrl}>
         Download canonical source
       </a>
-      <Button disabled={busy} onClick={addToLibrary}>
-        {busy ? "Adding…" : "Add to local library"}
-      </Button>
+      {added ? (
+        <>
+          <LinkButton href={readerHref}>
+            {progress ? "Continue in Reader" : "Open in Reader"}
+          </LinkButton>
+          <Button
+            className="button-secondary"
+            disabled={busy}
+            onClick={addToLibrary}
+          >
+            {busy ? "Revalidating…" : "Re-download and revalidate"}
+          </Button>
+        </>
+      ) : (
+        <Button disabled={busy || checking} onClick={addToLibrary}>
+          {busy
+            ? "Adding…"
+            : checking
+              ? "Checking local library…"
+              : otherVersion
+                ? "Add this version separately"
+                : "Add to local library"}
+        </Button>
+      )}
+      {otherVersion && !added ? (
+        <Notice title="Another version is already local">
+          Adding this release creates a separate local package and preserves
+          progress for the older version.
+        </Notice>
+      ) : null}
       {message ? <p role="status">{message}</p> : null}
       {error ? (
         <p className="form-message error-message" role="alert">

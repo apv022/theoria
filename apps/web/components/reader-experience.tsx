@@ -33,6 +33,7 @@ import { Button, Status } from "@theoria/ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { SyncStatus } from "./sync-status";
 
 const store =
   typeof indexedDB === "undefined" ? undefined : new IndexedDbLocalStore();
@@ -928,6 +929,7 @@ export function ReaderExperience({
             <i style={{ width: `${percentage}%` }} />
           </div>
           <strong>{percentage}% complete</strong>
+          <SyncStatus category="progress" stableId={packageId} />
         </div>
         <nav aria-label="Package contents">
           {status.course.chapters.map((chapter) => (

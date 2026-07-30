@@ -27,7 +27,7 @@ const openV2 = (factory: IDBFactory, name: string): Promise<IDBDatabase> =>
     request.onsuccess = () => resolve(request.result);
   });
 
-test("v2 to v4 migration preserves compilation history and adds no destructive changes", async () => {
+test("v2 to v5 migration preserves compilation history and adds no destructive changes", async () => {
   const factory = new IDBFactory();
   const name = "migration-test";
   const database = await openV2(factory, name);
@@ -76,7 +76,7 @@ test("v2 to v4 migration preserves compilation history and adds no destructive c
   assert.deepEqual(await store.progress.get(progress.packageId), progress);
 });
 
-test("v3 to v4 migration preserves every existing store and draft byte", async () => {
+test("v3 to v5 migration preserves every existing store and draft byte", async () => {
   const factory = new IDBFactory();
   const name = "draft-migration-test";
   const database = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -110,4 +110,55 @@ test("v3 to v4 migration preserves every existing store and draft byte", async (
   database.close();
   const store = new IndexedDbLocalStore(name, factory);
   assert.deepEqual(await store.drafts.get("legacy-draft" as never), legacy);
+  assert.deepEqual(await store.sync.counts(), {
+    drafts: 1,
+    library: 0,
+    progress: 0,
+    compilations: 0,
+    localPackages: 0,
+  });
+  assert.equal((await store.sync.settings()).enabled, false);
+  assert.deepEqual(await store.sync.outbox(), []);
+});
+
+test("v4 to v5 adds durable sync stores without claiming or queuing local data", async () => {
+  const factory = new IDBFactory();
+  const name = "sync-migration-test";
+  const database = await new Promise<IDBDatabase>((resolve, reject) => {
+    const request = factory.open(name, 4);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      db.createObjectStore("drafts", { keyPath: "id" });
+      db.createObjectStore("packages", { keyPath: "id" });
+      db.createObjectStore("library", { keyPath: "packageId" });
+      db.createObjectStore("progress", { keyPath: "packageId" });
+      db.createObjectStore("compilations", { keyPath: "id" });
+    };
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+  });
+  const localOnly = {
+    schema: 1,
+    id: "unclaimed",
+    title: "Unclaimed",
+    kind: "lesson",
+    mcf: "1.1",
+    createdAt: "2026-08-01T00:00:00.000Z",
+    updatedAt: "2026-08-01T00:00:00.000Z",
+    revision: 1,
+    sourceFiles: [],
+  };
+  await new Promise<void>((resolve, reject) => {
+    const transaction = database.transaction("drafts", "readwrite");
+    transaction.objectStore("drafts").put(localOnly);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+  });
+  database.close();
+
+  const store = new IndexedDbLocalStore(name, factory);
+  assert.deepEqual(await store.drafts.get("unclaimed" as never), localOnly);
+  assert.equal((await store.sync.settings()).enabled, false);
+  assert.equal((await store.sync.records()).length, 0);
+  assert.equal((await store.sync.outbox()).length, 0);
 });

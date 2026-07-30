@@ -25,13 +25,20 @@ runtime, Creation Studio for MCF 1.0 and 1.1, and optional Supabase accounts.
   explicit local ownership claims through an isolated platform adapter.
 - Authenticated publication of real browser-validated canonical `.mcf.zip` sources as immutable,
   versioned public, unlisted, or private repository packages.
+- Public repository browsing, indexed metadata search, filters, stable pagination, creator
+  listings, and validation-gated Add to Library → Reader journeys.
+- Explicit per-device account synchronization for owned drafts, progress, library records, private
+  local package sources, and compilation history, with a durable IndexedDB outbox and private
+  checksum-addressed recovery artifacts.
 - Target-local fixtures representing MCF 1.0, compact MCF 1.1, and the authoring masterclass.
 
 Question-bank and asset-collection packages validate but do not open in the learner. Manual work is
 saved as pending review and is never assigned an invented grade. Remote media remains
-network-dependent. Repository search/ranking, synchronization, collaborative editing, and LMS
-behavior are intentionally deferred. Signing in never uploads or merges browser-local records;
-only an explicit publish action uploads its current draft source archive.
+network-dependent. Recommendations, ratings, collaborative editing, and LMS
+behavior are intentionally deferred. Repository relevance is transparent Postgres full-text
+ranking, not recommendation ranking. Signing in never uploads or merges browser-local records;
+account sync starts only after an explicit choice at `/settings/sync`, and publishing remains a
+separate explicit action.
 
 ## Requirements
 
@@ -90,7 +97,9 @@ scripts run during installation.
 | `fixtures`                 | Fixture preparation policy; generated fixtures stay local                      |
 | `docs`                     | Architecture and integration decisions                                         |
 
-Start with [architecture.md](docs/architecture.md), [publishing.md](docs/publishing.md),
-[package-versioning.md](docs/package-versioning.md), [authentication.md](docs/authentication.md),
-[learning-and-reader.md](docs/learning-and-reader.md), and
+Start with [architecture.md](docs/architecture.md), [repository.md](docs/repository.md),
+[search.md](docs/search.md), [visibility.md](docs/visibility.md),
+[publishing.md](docs/publishing.md), [package-versioning.md](docs/package-versioning.md),
+[authentication.md](docs/authentication.md), [learning-and-reader.md](docs/learning-and-reader.md),
+and
 [mcf-browser-integration.md](docs/mcf-browser-integration.md).

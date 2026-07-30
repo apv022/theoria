@@ -15,6 +15,7 @@ import {
   useState,
   type ChangeEvent,
 } from "react";
+import { SyncStatus } from "./sync-status";
 
 const store =
   typeof indexedDB === "undefined" ? undefined : new IndexedDbLocalStore();
@@ -299,6 +300,7 @@ export function LibraryWorkspace() {
                   <Status tone={state?.completedAt ? "positive" : "neutral"}>
                     {state?.completedAt ? "Complete" : `${percentage}%`}
                   </Status>
+                  <SyncStatus category="library" stableId={entry.packageId} />
                 </div>
                 <p>
                   {entry.packageKind} · MCF {entry.mcfVersion} · v

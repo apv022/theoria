@@ -1,0 +1,20 @@
+{
+  "name": "@theoria/sync",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "tsx --test test/*.test.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@theoria/local-store": "workspace:*",
+    "@theoria/package-model": "workspace:*",
+    "@theoria/platform-client": "workspace:*"
+  },
+  "devDependencies": {
+    "fake-indexeddb": "6.2.2"
+  }
+}

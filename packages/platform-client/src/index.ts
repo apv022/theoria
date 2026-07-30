@@ -98,13 +98,29 @@ export interface OrganizationMembership {
 
 export interface RepositoryQuery {
   readonly text?: string;
-  readonly kind?: PackageManifest["kind"];
-  readonly cursor?: string;
+  readonly subject?: string;
+  readonly level?: string;
+  readonly language?: string;
+  readonly kind?: PackageKind;
+  readonly mcfVersion?: McfVersion;
+  readonly sort?: RepositorySort;
+  readonly page?: number;
+  readonly pageSize?: number;
 }
+
+export type RepositorySort = "relevance" | "newest" | "updated" | "title";
 
 export interface RepositoryResult {
   readonly packages: readonly PublishedPackage[];
-  readonly nextCursor?: string;
+  readonly total: number;
+  readonly page: number;
+  readonly pageSize: number;
+  readonly totalPages: number;
+}
+
+export interface RepositorySubject {
+  readonly value: string;
+  readonly packageCount: number;
 }
 
 export interface PublishedPackageVersion {
@@ -137,6 +153,12 @@ export interface PublishedPackage {
 
 export interface RepositoryClient {
   search(query: RepositoryQuery): Promise<RepositoryResult>;
+  listRecent(limit?: number): Promise<readonly PublishedPackage[]>;
+  listProfilePackages(
+    handle: string,
+    query?: Pick<RepositoryQuery, "page" | "pageSize" | "sort">,
+  ): Promise<RepositoryResult>;
+  listSubjects(limit?: number): Promise<readonly RepositorySubject[]>;
   get(id: PackageId): Promise<PublishedPackage | null>;
   getBySlug(slug: string): Promise<PublishedPackage | null>;
   getVersion(
@@ -192,9 +214,91 @@ export interface PublishingClient {
   ): Promise<PublishingResult>;
 }
 
+export type RemoteSyncCategory =
+  | "draft"
+  | "progress"
+  | "library"
+  | "local_package"
+  | "compilation";
+
+export type RemoteSyncArtifactStatus =
+  | "available"
+  | "metadata_only"
+  | "unavailable";
+
+export interface RemoteSyncRecord {
+  readonly category: RemoteSyncCategory;
+  readonly stableId: string;
+  readonly schemaVersion: number;
+  readonly revision: number;
+  readonly resetGeneration: number;
+  readonly sourceChecksum?: string;
+  readonly payload: Readonly<Record<string, unknown>>;
+  readonly artifactStatus: RemoteSyncArtifactStatus;
+  readonly deleted: boolean;
+  readonly deviceId: string;
+  readonly operationId: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly cursor: number;
+}
+
+export interface RemoteSyncCounts {
+  readonly drafts: number;
+  readonly progress: number;
+  readonly library: number;
+  readonly localPackages: number;
+  readonly compilations: number;
+  readonly blobs: number;
+  readonly storageBytes: number;
+}
+
+export interface RemoteSyncPage {
+  readonly records: readonly RemoteSyncRecord[];
+  readonly nextCursor: number;
+  readonly hasMore: boolean;
+}
+
+export type SyncBlobKind =
+  | "draft"
+  | "local_package"
+  | "source"
+  | "compiled"
+  | "record_binary";
+
+export interface SyncBlobReference {
+  readonly checksum: string;
+  readonly kind: SyncBlobKind;
+  readonly byteSize: number;
+  readonly contentType: string;
+  readonly available: boolean;
+  readonly storagePath?: string;
+}
+
 export interface SyncClient {
-  push(): Promise<void>;
-  pull(): Promise<void>;
+  registerDevice(
+    deviceId: string,
+    deviceName: string,
+    enabled: boolean,
+  ): Promise<void>;
+  counts(): Promise<RemoteSyncCounts>;
+  list(cursor: number, limit?: number): Promise<RemoteSyncPage>;
+  apply(
+    record: Omit<
+      RemoteSyncRecord,
+      "revision" | "createdAt" | "updatedAt" | "cursor"
+    >,
+    expectedRevision: number,
+  ): Promise<RemoteSyncRecord>;
+  uploadBlob(
+    reference: Omit<SyncBlobReference, "available">,
+    blob: Blob,
+    options?: {
+      readonly signal?: AbortSignal;
+      readonly onProgress?: (percentage: number) => void;
+    },
+  ): Promise<SyncBlobReference>;
+  downloadBlob(reference: SyncBlobReference): Promise<Blob>;
 }
 
 export interface PlatformClient {
@@ -202,7 +306,7 @@ export interface PlatformClient {
   readonly profiles: ProfileClient;
   readonly repository: RepositoryClient;
   readonly publishing: PublishingClient;
-  readonly sync?: SyncClient;
+  readonly sync: SyncClient;
 }
 
 const unavailable = (): Error =>
@@ -256,7 +360,28 @@ export function createUnavailablePlatformClient(): PlatformClient {
     },
     repository: {
       async search() {
-        return { packages: [] };
+        return {
+          packages: [],
+          total: 0,
+          page: 1,
+          pageSize: 12,
+          totalPages: 0,
+        };
+      },
+      async listRecent() {
+        return [];
+      },
+      async listProfilePackages() {
+        return {
+          packages: [],
+          total: 0,
+          page: 1,
+          pageSize: 12,
+          totalPages: 0,
+        };
+      },
+      async listSubjects() {
+        return [];
       },
       async get() {
         return null;
@@ -276,6 +401,26 @@ export function createUnavailablePlatformClient(): PlatformClient {
         return deferred();
       },
       async publish() {
+        return deferred();
+      },
+    },
+    sync: {
+      async registerDevice() {
+        return deferred();
+      },
+      async counts() {
+        return deferred();
+      },
+      async list() {
+        return deferred();
+      },
+      async apply() {
+        return deferred();
+      },
+      async uploadBlob() {
+        return deferred();
+      },
+      async downloadBlob() {
         return deferred();
       },
     },

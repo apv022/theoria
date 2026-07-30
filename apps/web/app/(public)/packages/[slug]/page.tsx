@@ -39,6 +39,15 @@ export default async function PackagePage({ params }: Props) {
     packageValue.versions.find(
       (version) => version.id === packageValue.latestVersionId,
     ) ?? packageValue.versions[0];
+  const manifest = latest?.manifestSummary;
+  const outcomes = manifest?.learningOutcomes ?? [];
+  const subjects = manifest?.subjects ?? [];
+  const level = manifest?.level;
+  const levelLabel =
+    typeof level === "string"
+      ? level
+      : (level?.label ?? level?.identifier ?? "Not declared");
+  const summary = manifest as Readonly<Record<string, unknown>> | undefined;
   return (
     <div className="page-wrap detail-page published-package-page">
       <p className="section-label">Published MCF package</p>
@@ -61,6 +70,19 @@ export default async function PackagePage({ params }: Props) {
               @{packageValue.creator.handle}
             </Link>
           </p>
+          {subjects.length ? (
+            <ul className="metadata-tags" aria-label="Subjects">
+              {subjects.map((subject) => (
+                <li key={subject}>
+                  <Link
+                    href={`/explore?subject=${encodeURIComponent(subject)}`}
+                  >
+                    {subject}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : null}
           {latest ? (
             <Link
               className="button"
@@ -71,6 +93,71 @@ export default async function PackagePage({ params }: Props) {
           ) : null}
         </article>
       </div>
+      {latest && manifest ? (
+        <section className="package-metadata-grid">
+          <article>
+            <p className="section-label">Canonical metadata</p>
+            <h2>About this package</h2>
+            <dl className="facts">
+              <div>
+                <dt>Level</dt>
+                <dd>{levelLabel}</dd>
+              </div>
+              <div>
+                <dt>Language</dt>
+                <dd>{manifest.language}</dd>
+              </div>
+              <div>
+                <dt>License</dt>
+                <dd>{manifest.license ?? "Not declared"}</dd>
+              </div>
+              <div>
+                <dt>Attribution</dt>
+                <dd>
+                  {manifest.authors.length
+                    ? manifest.authors.map((author) => author.name).join(", ")
+                    : "Not declared"}
+                </dd>
+              </div>
+            </dl>
+          </article>
+          <article>
+            <p className="section-label">Package structure</p>
+            <h2>Validated contents</h2>
+            <dl className="facts">
+              <div>
+                <dt>Lessons</dt>
+                <dd>{String(summary?.lessonCount ?? 0)}</dd>
+              </div>
+              <div>
+                <dt>Activities</dt>
+                <dd>{String(summary?.activityCount ?? 0)}</dd>
+              </div>
+              <div>
+                <dt>Questions</dt>
+                <dd>{String(summary?.questionCount ?? 0)}</dd>
+              </div>
+              <div>
+                <dt>Validation</dt>
+                <dd>{latest.validationSummary.state}</dd>
+              </div>
+            </dl>
+          </article>
+        </section>
+      ) : null}
+      {outcomes.length ? (
+        <section className="learning-outcomes">
+          <p className="section-label">Learning outcomes</p>
+          <h2>What learners can expect</h2>
+          <ol>
+            {outcomes.map((outcome, index) => (
+              <li key={outcome.id ?? `${index}-${outcome.statement}`}>
+                {outcome.statement}
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
       <section className="version-history">
         <p className="section-label">Immutable releases</p>
         <h2>Version history</h2>

@@ -70,6 +70,7 @@ export function AccountSettings() {
           this private settings screen.
         </p>
         <LinkButton href="/settings/profile">Edit public profile</LinkButton>
+        <LinkButton href="/settings/sync">Manage synchronization</LinkButton>
       </section>
       <form className="settings-card" onSubmit={changePassword}>
         <h2>Change password</h2>
@@ -112,10 +113,10 @@ export function AccountSettings() {
           Sign out
         </Button>
       </section>
-      <Notice title="Browser-local data remains local">
-        Signing in neither claims nor uploads existing drafts, packages,
-        progress, or compilations. Ownership fields are prepared for a later,
-        explicit synchronization stage.
+      <Notice title="Synchronization requires consent">
+        Signing in does not upload existing drafts, packages, progress, or
+        compilations. Enable synchronization explicitly for each browser under
+        synchronization settings.
       </Notice>
     </>
   );

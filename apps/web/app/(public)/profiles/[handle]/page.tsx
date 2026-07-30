@@ -1,16 +1,27 @@
 import { Notice, Status } from "@theoria/ui";
 import type { Metadata } from "next";
+import { RepositoryPackageCard } from "../../../../components/repository-package-card";
+import { RepositoryPagination } from "../../../../components/repository-pagination";
 import { serverPlatformClient } from "../../../../lib/platform/server";
 
 interface Props {
   readonly params: Promise<{ handle: string }>;
+  readonly searchParams: Promise<{ page?: string | string[] }>;
 }
 
 export const metadata: Metadata = { title: "Profile" };
 export const dynamic = "force-dynamic";
 
-export default async function ProfilePage({ params }: Props) {
+export default async function ProfilePage({ params, searchParams }: Props) {
   const { handle } = await params;
+  const rawPage = (await searchParams).page;
+  const page = Math.max(
+    1,
+    Number.parseInt(
+      Array.isArray(rawPage) ? (rawPage[0] ?? "1") : (rawPage ?? "1"),
+      10,
+    ) || 1,
+  );
   const platform = await serverPlatformClient();
   const profile = await platform.profiles.getByHandle(handle);
 
@@ -37,8 +48,23 @@ export default async function ProfilePage({ params }: Props) {
       </div>
     );
 
+  let listing;
+  let repositoryError: string | undefined;
+  try {
+    listing = await platform.repository.listProfilePackages(profile.handle, {
+      page,
+      pageSize: 6,
+      sort: "newest",
+    });
+  } catch (reason) {
+    repositoryError =
+      reason instanceof Error
+        ? reason.message
+        : "Published packages could not be loaded.";
+  }
+
   return (
-    <div className="page-wrap narrow-page">
+    <div className="page-wrap profile-page">
       <p className="section-label">Public profile</p>
       <div className="profile-heading">
         {profile.avatarPath ? (
@@ -67,10 +93,49 @@ export default async function ProfilePage({ params }: Props) {
           year: "numeric",
         }).format(new Date(profile.createdAt))}
       </p>
-      <Notice title="No published packages yet">
-        Publishing is intentionally deferred. Local drafts and learner activity
-        are never displayed on public profiles.
-      </Notice>
+      <section
+        id="repository-results"
+        className="profile-packages"
+        tabIndex={-1}
+      >
+        <header>
+          <p className="section-label">Public work</p>
+          <h2>
+            {listing?.total === 1
+              ? "1 public package"
+              : `${listing?.total ?? 0} public packages`}
+          </h2>
+          <p>
+            Newest publications by @{profile.handle}. Unlisted, private, and
+            local-only work is not included.
+          </p>
+        </header>
+        {repositoryError ? (
+          <Notice title="Repository unavailable">{repositoryError}</Notice>
+        ) : listing?.packages.length ? (
+          <>
+            <div className="repository-grid">
+              {listing.packages.map((packageValue) => (
+                <RepositoryPackageCard
+                  key={packageValue.id}
+                  packageValue={packageValue}
+                />
+              ))}
+            </div>
+            <RepositoryPagination
+              pathname={`/profiles/${profile.handle}`}
+              query={{}}
+              page={listing.page}
+              totalPages={listing.totalPages}
+            />
+          </>
+        ) : (
+          <Notice title="No public packages yet">
+            This profile has no public releases. Local drafts and learner
+            activity are never displayed.
+          </Notice>
+        )}
+      </section>
     </div>
   );
 }

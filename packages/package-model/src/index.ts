@@ -19,6 +19,16 @@ export interface PackageAuthor {
   readonly handle?: string;
 }
 
+export interface PackageLevel {
+  readonly label?: string;
+  readonly identifier?: string;
+}
+
+export interface PackageLearningOutcome {
+  readonly id?: string;
+  readonly statement: string;
+}
+
 export interface PackageManifest {
   readonly mcf: McfVersion;
   readonly kind: PackageKind;
@@ -29,6 +39,11 @@ export interface PackageManifest {
   readonly description?: string;
   readonly authors: readonly PackageAuthor[];
   readonly license?: string;
+  readonly subjects?: readonly string[];
+  readonly keywords?: readonly string[];
+  readonly level?: PackageLevel;
+  readonly learningOutcomes?: readonly PackageLearningOutcome[];
+  readonly estimatedDuration?: string;
 }
 
 export interface LocalOwnershipReference {
@@ -159,6 +174,7 @@ export interface LearnerProgress {
   readonly packageVersion: string;
   readonly contentId: string;
   readonly revision: number;
+  readonly resetGeneration?: number;
   readonly currentLessonId?: string;
   readonly questions: Readonly<Record<string, LearnerQuestionState>>;
   readonly activities: Readonly<Record<string, boolean>>;

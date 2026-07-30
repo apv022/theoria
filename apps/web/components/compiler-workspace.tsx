@@ -24,6 +24,7 @@ import {
   type ChangeEvent,
   type DragEvent,
 } from "react";
+import { SyncStatus } from "./sync-status";
 
 type SelectedSource =
   | { readonly type: "archive"; readonly file: File }
@@ -612,6 +613,7 @@ export function CompilerWorkspace() {
                 >
                   Reopen
                 </Button>
+                <SyncStatus category="compilation" stableId={record.id} />
               </li>
             ))}
           </ul>

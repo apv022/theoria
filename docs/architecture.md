@@ -44,6 +44,22 @@ account UI ──────────────────────> p
                                         +─ Auth session + refresh
                                         +─ public profile queries under RLS
 
+repository pages ────────────────> platform-client repository
+                                        |
+                                        +─ Postgres full-text/trigram indexes
+                                        +─ public-only listing RPC
+                                        +─ bounded stable pagination
+                                        +─ direct package/version reads under RLS
+
+local writes ──> IndexedDB schema 5 ──> durable outbox
+                         |                     |
+                         |              framework-independent sync engine
+                         |                     |
+                         +<── reconciliation <─+─> platform-client sync
+                                                     |
+                                                     +─ private Postgres records
+                                                     +─ private immutable Storage blobs
+
 Studio publish ──same-origin──> Next.js publishing route
         |                               |
         +─ real worker validation       +─ re-hash canonical archive
@@ -52,9 +68,15 @@ Studio publish ──same-origin──> Next.js publishing route
 ```
 
 Supabase is optional and owns identity, public profiles, repository metadata, package ownership,
-visibility, and canonical published source objects. Server Components and the request proxy use
+visibility, canonical published source objects, and the optional account recovery layer. IndexedDB
+remains authoritative for immediate runtime state. Server Components and the request proxy use
 cookie-backed account sessions where needed; imported package execution remains entirely in the
 browser.
+
+Explore URL state is server-readable and shareable. A small client control layer debounces query
+changes and announces loading, while Server Components fetch typed pages. Search never downloads
+archives. A deliberate Add to Library action resolves one authorized canonical source and sends it
+through the same secure `mcf-browser` import and validation path as a local file.
 
 ## Route layouts
 
@@ -69,7 +91,8 @@ browser.
 ## Dependency direction
 
 `package-model` is the leaf domain package. `mcf-browser`, `local-store`, `reader`, `authoring`, and
-`platform-client` depend on it. `reader` consumes the normalized `mcf-browser` model but contains no
+`platform-client` depend on it. `sync` depends on local-store and platform-client interfaces but has
+no React or Supabase dependency. `reader` consumes the normalized `mcf-browser` model but contains no
 React or storage code. `authoring` owns draft transformations and source generation, not parsing.
 `ui` depends only on React/Next peer APIs. `apps/web` composes them.
 Supabase-specific calls stay in the platform adapter and request infrastructure. Platform
@@ -77,23 +100,25 @@ interfaces do not leak into package execution or IndexedDB.
 
 ## Local-first ownership
 
-Database `theoria`, schema version 4, contains:
+Database `theoria`, schema version 5, contains:
 
 - `drafts`, keyed by draft ID;
 - `packages`, keyed by package ID;
 - `library`, keyed by package ID;
 - `progress`, keyed by package ID;
 - `compilations`, keyed by stable local UUID, with `createdAt` and `sourceChecksum` indexes.
+- `syncSettings`, `syncRecords`, `syncOutbox`, and `syncConflicts`, added without rewriting any
+  content record.
 
 A compilation record includes identity, kind, MCF version, source checksum, source archive,
-compiled artifact, validation, diagnostics, timestamps, and sync state. Future synchronization can
-upload a record without changing its local identity or taking over local writes.
+compiled artifact, validation, diagnostics, timestamps, and sync state. Synchronization uploads it
+without changing its local identity or taking over local writes.
 
 Library entries reference either an imported package record or an existing compilation record; they
 do not duplicate large archives. Learner progress has stable package/version/content IDs,
 monotonic revisions, timestamps, response and assessment state, and persisted random orders.
-The v2-to-v3 and v3-to-v4 upgrades are additive and leave compiler, library, package, and progress
-history untouched.
+The v2-to-v3, v3-to-v4, and v4-to-v5 upgrades are additive and leave compiler, library, package,
+progress, and draft history untouched.
 
 Drafts, library entries, imported packages, and compilations can carry an optional stable local
 user-ownership reference. Existing records remain unclaimed. Claiming is explicit, and neither
@@ -113,6 +138,6 @@ revoked immediately after dispatch.
 
 ## Deferred server work
 
-Discovery/search ranking, organization membership, moderation, derived artifact uploads, and every
-form of draft, progress, library, and compilation-history synchronization remain deferred. Local
-compilation, drafts, progress, and library access are account-independent.
+Organization membership, moderation, recommendations, and collaborative editing remain deferred.
+Search and optional account synchronization are implemented; opaque or personalized discovery
+ranking is not. Local compilation, drafts, progress, and library access remain account-independent.
