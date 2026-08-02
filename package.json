@@ -7,7 +7,7 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "build": "corepack pnpm --filter @theoria/web build --webpack",
+    "build": "corepack pnpm --filter @theoria/web build",
     "dev": "corepack pnpm --filter @theoria/web dev",
     "fixtures:prepare": "node scripts/prepare-fixtures.mjs",
     "format": "prettier --write .",
@@ -15,6 +15,7 @@
     "lint": "eslint . --max-warnings=0",
     "test": "node --test scripts/*.test.mjs && corepack pnpm --filter @theoria/mcf-browser test && corepack pnpm --filter @theoria/reader test && corepack pnpm --filter @theoria/authoring test && corepack pnpm --filter @theoria/local-store test && corepack pnpm --filter @theoria/platform-client test && corepack pnpm --filter @theoria/sync test",
     "test:browser": "playwright test",
+    "test:dev": "node scripts/smoke-dev-server.mjs",
     "typecheck": "tsc --noEmit --pretty false -p tsconfig.check.json",
     "verify": "corepack pnpm lint && corepack pnpm typecheck && corepack pnpm test && corepack pnpm build"
   },

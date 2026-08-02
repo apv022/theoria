@@ -65,6 +65,152 @@ test("new course, module, and lesson source validates through the real parser", 
   }
 });
 
+test("visual regeneration preserves TeX-rich YAML values through parse and re-export", async () => {
+  const initial = await validateFiles(
+    serialized(newPackageFiles("lesson", "Math", "math")),
+  );
+  assert.ok(initial.valid && initial.package?.kind === "lesson");
+  const values = [
+    "$12\\times 12 = 144$",
+    "$\\sqrt{16}=4$",
+    "$37\\%=0.37$",
+    "$\\frac{1}{2}$",
+    "$x_1$",
+    "Euler's formula is $e^{i\\pi}+1=0$.",
+    "Before $\\frac{1}{2}$, then $\\sqrt{16}$.",
+    "$$\n\\sqrt{x^2}=|x|\n$$",
+    "no trailing newline\n",
+    "two trailing newlines\n\n",
+  ];
+  const valueAt = (index: number) => values[index]!;
+  const pkg = structuredClone(initial.package);
+  pkg.lesson.activities = [
+    {
+      id: "tex",
+      type: "practice",
+      content: "$$\n\\frac{1}{2}=0.5\n$$",
+      questions: [
+        ...values.map((prompt, index) => ({
+          id: `q-${index + 1}`,
+          type: "short_answer" as const,
+          prompt,
+          answer: "answer",
+          points: 1,
+          required: true,
+          hint: valueAt((index + 1) % values.length),
+          explanation: valueAt((index + 2) % values.length),
+        })),
+        {
+          id: "choice",
+          type: "multiple_choice" as const,
+          prompt: values[0]!,
+          answer: "one",
+          points: 1,
+          required: true,
+          options: [
+            { id: "one", text: values[1]!, feedback: values[2]! },
+            { id: "two", text: values[3]!, feedback: values[4]! },
+          ],
+        },
+        {
+          id: "matching",
+          type: "matching" as const,
+          prompt: values[5]!,
+          points: 1,
+          required: true,
+          premises: [
+            { id: "one", text: values[6]!, feedback: values[7]! },
+            { id: "two", text: values[8]!, feedback: values[9]! },
+          ],
+          responses: [
+            { id: "a", text: values[0]!, feedback: values[1]! },
+            { id: "b", text: values[2]!, feedback: values[3]! },
+          ],
+          answer: { one: "a", two: "b" },
+        },
+        {
+          id: "ordering",
+          type: "ordering" as const,
+          prompt: values[4]!,
+          points: 1,
+          required: true,
+          items: [
+            { id: "first", text: values[5]!, feedback: values[6]! },
+            { id: "second", text: values[7]!, feedback: values[8]! },
+          ],
+          answer: ["first", "second"],
+        },
+      ],
+    },
+  ];
+  pkg.lesson.rubrics = [
+    {
+      id: "tex-rubric",
+      title: "TeX rubric",
+      description: values[0]!,
+      criteria: [
+        {
+          id: "criterion",
+          description: values[1]!,
+          levels: [
+            { id: "complete", description: values[2]!, points: 1 },
+            { id: "retry", description: values[3]!, points: 0 },
+          ],
+        },
+      ],
+    },
+  ];
+  const files = generatedFiles(pkg);
+  const lessonSource = fileText(
+    files.find((file) => file.path === "lesson.mcf")!,
+  );
+  assert.match(lessonSource, /prompt: '\$12\\times 12 = 144\$'/);
+  assert.match(lessonSource, /prompt: \|-\n\s+\$\$\n\s+\\sqrt/);
+  assert.match(lessonSource, /Euler''s formula/);
+
+  const reparsed = await validateFiles(serialized(files));
+  assert.ok(reparsed.valid && reparsed.package?.kind === "lesson");
+  const questions = reparsed.package.lesson.activities[0]!.questions;
+  assert.deepEqual(
+    questions.slice(0, values.length).map((question) => question.prompt),
+    values,
+  );
+  assert.deepEqual(
+    questions.slice(0, values.length).map((question) => question.hint),
+    [...values.slice(1), values[0]],
+  );
+  assert.deepEqual(
+    questions.slice(0, values.length).map((question) => question.explanation),
+    [...values.slice(2), values[0], values[1]],
+  );
+  assert.equal(reparsed.package.lesson.rubrics?.[0]?.description, values[0]);
+  assert.equal(
+    reparsed.package.lesson.rubrics?.[0]?.criteria[0]?.description,
+    values[1],
+  );
+  assert.equal(
+    reparsed.package.lesson.rubrics?.[0]?.criteria[0]?.levels[0]?.description,
+    values[2],
+  );
+  assert.equal(questions[10]?.options?.[0]?.text, values[1]);
+  assert.equal(questions[10]?.options?.[0]?.feedback, values[2]);
+  assert.equal(questions[11]?.premises?.[0]?.text, values[6]);
+  assert.equal(questions[11]?.responses?.[0]?.feedback, values[1]);
+  assert.equal(questions[12]?.items?.[0]?.feedback, values[6]);
+
+  const reexported = await validateFiles(
+    serialized(generatedFiles(reparsed.package)),
+  );
+  assert.ok(reexported.valid && reexported.package?.kind === "lesson");
+  assert.deepEqual(
+    reexported.package.lesson.activities[0]!.questions.slice(
+      0,
+      values.length,
+    ).map((question) => question.prompt),
+    values,
+  );
+});
+
 test("visual metadata generation round-trips without phantom content", async () => {
   const original = await validatePackage(
     "/home/apv/examplecourses/archives/feature-showcase.mcf.zip",

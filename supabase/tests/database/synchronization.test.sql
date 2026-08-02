@@ -72,13 +72,18 @@ values
   );
 
 set local role anon;
-select is_empty(
+select set_config('request.jwt.claim.sub', '', true);
+select throws_ok(
   'select stable_id from public.sync_records',
-  'anonymous users cannot read synchronized records'
+  '42501',
+  null,
+  'anonymous users have no synchronized-record access'
 );
-select is_empty(
+select throws_ok(
   'select checksum from public.sync_blobs',
-  'anonymous users cannot read private blob metadata'
+  '42501',
+  null,
+  'anonymous users have no private-blob metadata access'
 );
 
 set local role authenticated;
@@ -269,6 +274,7 @@ select throws_ok(
 );
 
 set local role anon;
+select set_config('request.jwt.claim.sub', '', true);
 select throws_ok(
   $$select public.sync_register_device(
     'bbbbbbbb-0000-4000-8000-000000000002',

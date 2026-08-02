@@ -296,7 +296,7 @@ begin
     select 1 from storage.objects object
     where object.bucket_id = 'account-sync'
       and object.name = requested_storage_path
-      and object.owner_id = caller_id
+      and object.owner_id = caller_id::text
   ) then
     raise exception 'private sync blob upload is missing'
       using errcode = '22023';
@@ -346,7 +346,7 @@ create policy "Owners read registered sync blobs"
   on storage.objects for select to authenticated
   using (
     bucket_id = 'account-sync'
-    and owner_id = (select auth.uid())
+    and owner_id = (select auth.uid()::text)
     and exists (
       select 1 from public.sync_blobs blob
       where blob.owner_id = (select auth.uid())
@@ -358,7 +358,7 @@ create policy "Owners upload immutable sync blobs"
   on storage.objects for insert to authenticated
   with check (
     bucket_id = 'account-sync'
-    and owner_id = (select auth.uid())
+    and owner_id = (select auth.uid()::text)
     and (storage.foldername(name))[1] = 'users'
     and (storage.foldername(name))[2] = (select auth.uid())::text
     and (storage.foldername(name))[3] in (
