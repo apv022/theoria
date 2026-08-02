@@ -232,6 +232,7 @@ values
   );
 
 set local role anon;
+select set_config('request.jwt.claim.sub', '', true);
 select results_eq(
   'select slug from public.packages order by slug',
   array['public-course'::text, 'unlisted-course'::text],
@@ -334,13 +335,14 @@ select results_eq(
   array[3::bigint],
   'the owner can read private package metadata'
 );
-select results_eq(
+select throws_ok(
   $$delete from storage.objects
     where bucket_id = 'package-sources'
       and name like '%aaaaaaaa%.mcf.zip'
     returning name$$,
-  $$select name from storage.objects where false$$,
-  'an owner cannot delete a finalized canonical source'
+  '42501',
+  null,
+  'an owner cannot delete a finalized canonical source directly'
 );
 
 select * from finish();

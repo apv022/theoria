@@ -9,6 +9,7 @@ out/
 test-results/
 playwright-report/
 .verification/
+supabase/.temp/
 *.tsbuildinfo
 fixtures/local/
 .env

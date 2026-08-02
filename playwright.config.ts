@@ -19,7 +19,7 @@ export default defineConfig({
     command:
       process.env.PLAYWRIGHT_PREBUILT === "1"
         ? serverCommand
-        : `${authEnvironment} corepack pnpm --filter @theoria/web build --webpack && ${serverCommand}`,
+        : `${authEnvironment} corepack pnpm --filter @theoria/web build && ${serverCommand}`,
     port: 3000,
     reuseExistingServer: false,
     timeout: 240_000,

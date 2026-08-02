@@ -82,6 +82,7 @@ test("visual regeneration preserves TeX-rich YAML values through parse and re-ex
     "no trailing newline\n",
     "two trailing newlines\n\n",
   ];
+  const valueAt = (index: number) => values[index]!;
   const pkg = structuredClone(initial.package);
   pkg.lesson.activities = [
     {
@@ -96,46 +97,46 @@ test("visual regeneration preserves TeX-rich YAML values through parse and re-ex
           answer: "answer",
           points: 1,
           required: true,
-          hint: values[(index + 1) % values.length],
-          explanation: values[(index + 2) % values.length],
+          hint: valueAt((index + 1) % values.length),
+          explanation: valueAt((index + 2) % values.length),
         })),
         {
           id: "choice",
           type: "multiple_choice" as const,
-          prompt: values[0],
+          prompt: values[0]!,
           answer: "one",
           points: 1,
           required: true,
           options: [
-            { id: "one", text: values[1], feedback: values[2] },
-            { id: "two", text: values[3], feedback: values[4] },
+            { id: "one", text: values[1]!, feedback: values[2]! },
+            { id: "two", text: values[3]!, feedback: values[4]! },
           ],
         },
         {
           id: "matching",
           type: "matching" as const,
-          prompt: values[5],
+          prompt: values[5]!,
           points: 1,
           required: true,
           premises: [
-            { id: "one", text: values[6], feedback: values[7] },
-            { id: "two", text: values[8], feedback: values[9] },
+            { id: "one", text: values[6]!, feedback: values[7]! },
+            { id: "two", text: values[8]!, feedback: values[9]! },
           ],
           responses: [
-            { id: "a", text: values[0], feedback: values[1] },
-            { id: "b", text: values[2], feedback: values[3] },
+            { id: "a", text: values[0]!, feedback: values[1]! },
+            { id: "b", text: values[2]!, feedback: values[3]! },
           ],
           answer: { one: "a", two: "b" },
         },
         {
           id: "ordering",
           type: "ordering" as const,
-          prompt: values[4],
+          prompt: values[4]!,
           points: 1,
           required: true,
           items: [
-            { id: "first", text: values[5], feedback: values[6] },
-            { id: "second", text: values[7], feedback: values[8] },
+            { id: "first", text: values[5]!, feedback: values[6]! },
+            { id: "second", text: values[7]!, feedback: values[8]! },
           ],
           answer: ["first", "second"],
         },
@@ -146,14 +147,14 @@ test("visual regeneration preserves TeX-rich YAML values through parse and re-ex
     {
       id: "tex-rubric",
       title: "TeX rubric",
-      description: values[0],
+      description: values[0]!,
       criteria: [
         {
           id: "criterion",
-          description: values[1],
+          description: values[1]!,
           levels: [
-            { id: "complete", description: values[2], points: 1 },
-            { id: "retry", description: values[3], points: 0 },
+            { id: "complete", description: values[2]!, points: 1 },
+            { id: "retry", description: values[3]!, points: 0 },
           ],
         },
       ],

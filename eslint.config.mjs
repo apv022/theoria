@@ -15,6 +15,7 @@ export default tseslint.config(
       "**/node_modules/**",
       ".verification/**",
       "fixtures/local/**",
+      "supabase/.temp/**",
       "coverage/**",
       "next-env.d.ts",
       "playwright-report/**",

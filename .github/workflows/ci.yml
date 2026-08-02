@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  application:
+    name: Application
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: corepack enable
+      - run: corepack pnpm install --frozen-lockfile
+      - run: corepack pnpm fixtures:prepare
+      - run: corepack pnpm format:check
+      - run: corepack pnpm lint
+      - run: corepack pnpm typecheck
+      - run: corepack pnpm test
+      - run: corepack pnpm exec playwright install --with-deps chromium
+      - run: corepack pnpm test:dev
+      - run: corepack pnpm build
+      - run: corepack pnpm test:browser
+      - name: Upload browser artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: application-failure-artifacts
+          if-no-files-found: ignore
+          path: |
+            test-results/
+            playwright-report/
+            .next/
+
+  supabase:
+    name: Supabase database
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: corepack enable
+      - run: corepack pnpm install --frozen-lockfile
+      - run: corepack pnpm supabase start
+      - run: corepack pnpm supabase db reset --local
+      - run: corepack pnpm supabase test db --local
+      - name: Capture Supabase diagnostics
+        if: failure()
+        run: |
+          corepack pnpm supabase status || true
+          docker ps -a || true
+          docker logs supabase_db_theoria || true
+      - name: Stop local Supabase
+        if: always()
+        run: corepack pnpm supabase stop --no-backup
