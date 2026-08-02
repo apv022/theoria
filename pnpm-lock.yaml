@@ -2036,7 +2036,7 @@ packages:
     engines: {node: '>= 0.4'}
 
   mcf-npm@file:vendor/mcf-npm-1.1.0.tgz:
-    resolution: {integrity: sha512-fB8FQntypMcQsR7ne03GNfpL7gKBqsQSxT5I69QdzLp7ApjObh/G/lhsNpuJXIIyvxxBbopc0hPs5/1Hgg9ftw==, tarball: file:vendor/mcf-npm-1.1.0.tgz}
+    resolution: {integrity: sha512-6p4bfmyHVxBDFkFS0xdviWpcceKq0lloGAIKJuEVwxV4TUnie0OORntGJRfQRws+cnTvQ0yyJPEKwZFbOz3yNA==, tarball: file:vendor/mcf-npm-1.1.0.tgz}
     version: 1.1.0
     engines: {node: '>=20'}
     hasBin: true

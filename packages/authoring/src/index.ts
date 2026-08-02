@@ -13,7 +13,7 @@ import {
   type PackageKind,
   type ValidationSummary,
 } from "@theoria/package-model";
-import { stringify } from "yaml";
+import { Scalar, stringify } from "yaml";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -52,8 +52,107 @@ const clean = (value: Record<string, unknown>): Record<string, unknown> =>
     ),
   );
 
-const yaml = (value: Record<string, unknown>): string =>
-  stringify(clean(value), { lineWidth: 100 }).trimEnd();
+const richScalar = (value: string): Scalar<string> => {
+  const scalar = new Scalar(value);
+  scalar.type = value.includes("\n")
+    ? Scalar.BLOCK_LITERAL
+    : Scalar.QUOTE_SINGLE;
+  return scalar;
+};
+
+const richQuestion = (
+  question: Record<string, unknown>,
+): Record<string, unknown> => {
+  const copy = { ...question };
+  for (const key of ["prompt", "hint", "explanation"] as const)
+    if (typeof copy[key] === "string") copy[key] = richScalar(copy[key]);
+  for (const key of ["options", "premises", "responses", "items"] as const) {
+    if (!Array.isArray(copy[key])) continue;
+    copy[key] = copy[key].map((item) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) return item;
+      const text = item as Record<string, unknown>;
+      return {
+        ...text,
+        ...(typeof text.text === "string"
+          ? { text: richScalar(text.text) }
+          : {}),
+        ...(typeof text.feedback === "string"
+          ? { feedback: richScalar(text.feedback) }
+          : {}),
+      };
+    });
+  }
+  // Keep block scalars ahead of ordinary question fields. Besides producing a
+  // stable canonical order, this preserves `|+` trailing newlines inside an
+  // mcf-question fence (the fence itself is intentionally trimmed by MCF).
+  const ordered: Record<string, unknown> = {};
+  for (const key of ["id", "type", "prompt", "hint", "explanation"])
+    if (key in copy) ordered[key] = copy[key];
+  for (const [key, value] of Object.entries(copy))
+    if (!(key in ordered)) ordered[key] = value;
+  return ordered;
+};
+
+const richRubric = (
+  rubric: Record<string, unknown>,
+): Record<string, unknown> => ({
+  ...rubric,
+  ...(typeof rubric.description === "string"
+    ? { description: richScalar(rubric.description) }
+    : {}),
+  ...(Array.isArray(rubric.criteria)
+    ? {
+        criteria: rubric.criteria.map((criterion) => {
+          if (
+            !criterion ||
+            typeof criterion !== "object" ||
+            Array.isArray(criterion)
+          )
+            return criterion;
+          const copy = criterion as Record<string, unknown>;
+          return {
+            ...copy,
+            ...(typeof copy.description === "string"
+              ? { description: richScalar(copy.description) }
+              : {}),
+            ...(Array.isArray(copy.levels)
+              ? {
+                  levels: copy.levels.map((level) => {
+                    if (
+                      !level ||
+                      typeof level !== "object" ||
+                      Array.isArray(level)
+                    )
+                      return level;
+                    const levelCopy = level as Record<string, unknown>;
+                    return {
+                      ...levelCopy,
+                      ...(typeof levelCopy.description === "string"
+                        ? { description: richScalar(levelCopy.description) }
+                        : {}),
+                    };
+                  }),
+                }
+              : {}),
+          };
+        }),
+      }
+    : {}),
+});
+
+/** Serializes the MCF rich-content fields without YAML interpreting TeX escapes. */
+const yaml = (value: Record<string, unknown>): string => {
+  const copy = clean(value);
+  if (typeof copy.prompt === "string")
+    return stringify(richQuestion(copy), { lineWidth: 100 }).trimEnd();
+  if (Array.isArray(copy.rubrics))
+    copy.rubrics = copy.rubrics.map((rubric) =>
+      rubric && typeof rubric === "object" && !Array.isArray(rubric)
+        ? richRubric(rubric as Record<string, unknown>)
+        : rubric,
+    );
+  return stringify(copy, { lineWidth: 100 }).trimEnd();
+};
 
 const without = (
   value: Record<string, unknown>,

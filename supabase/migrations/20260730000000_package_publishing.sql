@@ -190,7 +190,7 @@ create policy "Owners read their package source uploads"
   to authenticated
   using (
     bucket_id = 'package-sources'
-    and owner_id = (select auth.uid())
+    and owner_id = (select auth.uid()::text)
     and (storage.foldername(name))[1] = 'packages'
     and (storage.foldername(name))[2] = (select auth.uid())::text
   );
@@ -201,7 +201,7 @@ create policy "Owners upload bounded package source paths"
   to authenticated
   with check (
     bucket_id = 'package-sources'
-    and owner_id = (select auth.uid())
+    and owner_id = (select auth.uid()::text)
     and (storage.foldername(name))[1] = 'packages'
     and (storage.foldername(name))[2] = (select auth.uid())::text
     and name ~ '^packages/[0-9a-f-]{36}/[0-9a-f-]{36}/[^/]+/[0-9a-f]{64}\.mcf\.zip$'
@@ -213,7 +213,7 @@ create policy "Owners remove only unfinalized package sources"
   to authenticated
   using (
     bucket_id = 'package-sources'
-    and owner_id = (select auth.uid())
+    and owner_id = (select auth.uid()::text)
     and (storage.foldername(name))[1] = 'packages'
     and (storage.foldername(name))[2] = (select auth.uid())::text
     and not exists (
@@ -335,7 +335,7 @@ begin
     from storage.objects object
     where object.bucket_id = 'package-sources'
       and object.name = requested_source_storage_path
-      and object.owner_id = caller_id
+      and object.owner_id = caller_id::text
   ) then
     raise exception 'verified source upload is missing'
       using errcode = '22023';
