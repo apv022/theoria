@@ -258,8 +258,16 @@ export function normalizeDirectoryFiles(
     );
   }
   const roots = input.map((file) => file.path.split("/")[0]).filter(Boolean);
-  const stripRoot =
-    new Set(roots).size === 1 && input.every((file) => file.path.includes("/"));
+  const pickerRoot = new Set(roots).size === 1 ? roots[0] : undefined;
+  // A directory picker adds its selected directory name to every relative
+  // path. Only strip that component when it contains the package manifest;
+  // otherwise a legitimate single path such as assets/diagram.png would be
+  // changed to diagram.png during validation.
+  const stripRoot = Boolean(
+    pickerRoot &&
+      !input.some((file) => file.path === "manifest.yaml") &&
+      input.some((file) => file.path === `${pickerRoot}/manifest.yaml`),
+  );
   let total = 0;
   const names = new Set<string>();
   return input.map((file) => {

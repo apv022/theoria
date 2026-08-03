@@ -83,3 +83,12 @@ test("directory imports strip one picker root and retain source bytes", () => {
     ["manifest.yaml", "lesson.mcf"],
   );
 });
+
+test("single nested package paths are never mistaken for picker roots", () => {
+  const content = bytes("binary content");
+  const files = normalizeDirectoryFiles([
+    { path: "assets/image with spaces.png", bytes: arrayBuffer(content) },
+  ]);
+  assert.equal(files[0]?.path, "assets/image with spaces.png");
+  assert.deepEqual(files[0]?.bytes, content);
+});

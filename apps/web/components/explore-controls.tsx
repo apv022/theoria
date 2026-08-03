@@ -1,6 +1,7 @@
 "use client";
 
 import type { RepositorySubject } from "@theoria/platform-client";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   useEffect,
@@ -33,10 +34,11 @@ export function ExploreControls({
   const router = useRouter();
   const parameters = useSearchParams();
   const [text, setText] = useState(query.q ?? "");
+  const [level, setLevel] = useState(query.level ?? "");
+  const [language, setLanguage] = useState(query.language ?? "");
   const [offline, setOffline] = useState(false);
   const [pending, startTransition] = useTransition();
   const firstPage = useRef(true);
-  const firstQuery = useRef(true);
 
   useEffect(() => {
     const update = () => setOffline(!navigator.onLine);
@@ -49,21 +51,9 @@ export function ExploreControls({
     };
   }, []);
 
-  useEffect(() => {
-    if (firstQuery.current) {
-      firstQuery.current = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      if (text === (parameters.get("q") ?? "")) return;
-      startTransition(() =>
-        router.replace(setParameter(parameters, "q", text.trim()), {
-          scroll: false,
-        }),
-      );
-    }, 350);
-    return () => clearTimeout(timer);
-  }, [parameters, router, text]);
+  useEffect(() => setText(query.q ?? ""), [query.q]);
+  useEffect(() => setLevel(query.level ?? ""), [query.level]);
+  useEffect(() => setLanguage(query.language ?? ""), [query.language]);
 
   useEffect(() => {
     if (firstPage.current) {
@@ -80,7 +70,23 @@ export function ExploreControls({
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    update("q", text.trim());
+    const next = new URLSearchParams(parameters);
+    const submitted: readonly (readonly [string, string])[] = [
+      ["q", text.trim()],
+      ["level", level.trim()],
+      ["language", language.trim()],
+    ];
+    for (const [name, value] of submitted) {
+      if (value) next.set(name, value);
+      else next.delete(name);
+    }
+    next.delete("page");
+    const serialized = next.toString();
+    startTransition(() =>
+      router.push(`/explore${serialized ? `?${serialized}` : ""}`, {
+        scroll: false,
+      }),
+    );
   };
 
   const selectedSubject = query.subject ?? "";
@@ -135,17 +141,17 @@ export function ExploreControls({
         <label className="field">
           <span>Level</span>
           <input
-            value={query.level ?? ""}
+            value={level}
             placeholder="Any level"
-            onChange={(event) => update("level", event.target.value.trim())}
+            onChange={(event) => setLevel(event.target.value)}
           />
         </label>
         <label className="field">
           <span>Language</span>
           <input
-            value={query.language ?? ""}
+            value={language}
             placeholder="Any BCP 47 language"
-            onChange={(event) => update("language", event.target.value.trim())}
+            onChange={(event) => setLanguage(event.target.value)}
           />
         </label>
         <label className="field">
@@ -186,12 +192,12 @@ export function ExploreControls({
           </select>
         </label>
         <div className="repository-control-actions">
-          <button className="button" type="submit">
-            Search
+          <button className="button" type="submit" aria-busy={pending}>
+            {pending ? "Searching…" : "Search"}
           </button>
-          <a className="button button-secondary" href="/explore">
+          <Link className="button button-secondary" href="/explore">
             Clear filters
-          </a>
+          </Link>
         </div>
       </form>
       <p className="sr-only" role="status" aria-live="polite">

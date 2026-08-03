@@ -1,6 +1,6 @@
 import DOMPurify from "dompurify";
 import katex from "katex";
-import { marked, Renderer, type Token } from "marked";
+import { marked, Renderer } from "marked";
 import type { ReaderLesson, ReaderStructure } from "./model";
 
 export type AssetResolver = (path: string) => string | undefined;
@@ -92,21 +92,39 @@ function withMath(source: string, renderer: Renderer): string {
   }> = [];
   let prefix = "MCFMATHPLACEHOLDER";
   while (source.includes(prefix)) prefix += "_";
+  let codePrefix = "MCFCODEPLACEHOLDER";
+  while (source.includes(codePrefix) || codePrefix.includes(prefix))
+    codePrefix += "_";
   const placeholder = (value: string, displayMode: boolean) => {
     const index = expressions.push({ source: value, displayMode }) - 1;
     return `${prefix}${index}END`;
   };
-  const tokens = marked.lexer(source, { async: false, gfm: true });
-  marked.walkTokens(tokens, (token: Token) => {
-    if (token.type !== "text") return;
-    token.text = token.text
-      .replace(/\$\$([\s\S]*?)\$\$/g, (_match: string, value: string) =>
-        placeholder(value.trim(), true),
-      )
-      .replace(/(?<!\\)\$([^\n$]+)\$/g, (_match: string, value: string) =>
-        placeholder(value, false),
-      );
-  });
+  const code: string[] = [];
+  const protectCode = (value: string): string => {
+    const index = code.push(value) - 1;
+    return `${codePrefix}${index}END`;
+  };
+  // TeX must be protected before Markdown tokenization because Markdown splits
+  // valid TeX escapes such as \% into a separate escape token. Code is removed
+  // from consideration first so authored examples remain literal.
+  const withoutFences = source.replace(
+    /^( {0,3})(`{3,}|~{3,})[^\n]*(?:\n[\s\S]*?^\1\2[ \t]*(?=\n|$)|$)/gm,
+    protectCode,
+  );
+  const withoutCode = withoutFences.replace(/(`+)[^\n]*?\1/g, protectCode);
+  const protectedMath = withoutCode
+    .replace(
+      /(?<!\\)\$\$([\s\S]*?)(?<!\\)\$\$/g,
+      (_match: string, value: string) => placeholder(value.trim(), true),
+    )
+    .replace(/(?<!\\)\$([^\n$]+)\$/g, (_match: string, value: string) =>
+      placeholder(value, false),
+    )
+    .replace(
+      new RegExp(`${codePrefix}(\\d+)END`, "g"),
+      (_match, index: string) => code[Number(index)]!,
+    );
+  const tokens = marked.lexer(protectedMath, { async: false, gfm: true });
   return marked
     .parser(tokens, { renderer, gfm: true })
     .replace(new RegExp(`${prefix}(\\d+)END`, "g"), (_match, index: string) => {

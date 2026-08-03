@@ -4,9 +4,11 @@ import {
   acceptValidation,
   addActivity,
   addChapter,
+  addDraftAssets,
   addLesson,
   addQuestion,
   authoringLessons,
+  draftAssetUsages,
   draftInput,
   duplicateActivity,
   duplicateChapter,
@@ -18,6 +20,7 @@ import {
   moveChapter,
   moveLesson,
   regenerateFromPackage,
+  replaceDraftAsset,
   removeActivity,
   removeChapter,
   removeLesson,
@@ -37,7 +40,6 @@ import {
   type AuthoringQuestionType,
 } from "@theoria/authoring";
 import {
-  normalizeDirectoryFiles,
   WorkerMcfEngine,
   type EngineOperation,
   type EngineProgress,
@@ -46,7 +48,6 @@ import {
 import { IndexedDbLocalStore } from "@theoria/local-store";
 import {
   type CompilationRecord,
-  type DraftSourceFile,
   type PackageDraft,
   type ValidationDiagnostic,
 } from "@theoria/package-model";
@@ -1152,6 +1153,8 @@ export function StudioDraftWorkspace({
   const [sourceBuffer, setSourceBuffer] = useState("");
   const [sourceDirty, setSourceDirty] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string>();
+  const [assetBusy, setAssetBusy] = useState(false);
+  const [assetMessage, setAssetMessage] = useState<string>();
   const validationRequest = useRef<string | undefined>(undefined);
 
   useEffect(() => {
@@ -1469,7 +1472,7 @@ export function StudioDraftWorkspace({
       ...acceptValidation(draft, result),
       latestCompilationId: compilationId,
     });
-    if (openPreview) setPreviewUrl(`/read/${encodeURIComponent(localId)}`);
+    if (openPreview) setPreviewUrl(`/preview/${encodeURIComponent(localId)}`);
     else download(record.compiledArtifact, `${slug(draft.title)}-compiled.zip`);
   };
 
@@ -1503,62 +1506,50 @@ export function StudioDraftWorkspace({
   };
 
   const uploadAssets = async (selected: File[]) => {
-    if (!pkg || selected.length === 0) return;
-    const existingHashes = new Set(
-      await Promise.all(
-        draft.sourceFiles.map(async (file) => {
-          const hash = await crypto.subtle.digest("SHA-256", file.bytes);
-          return [...new Uint8Array(hash)]
-            .map((value) => value.toString(16).padStart(2, "0"))
-            .join("");
-        }),
-      ),
-    );
-    let nextDraft = draft;
-    let nextPackage = structuredClone(pkg);
-    for (const file of selected) {
-      const bytes = await file.arrayBuffer();
-      normalizeDirectoryFiles([{ path: `assets/${file.name}`, bytes }]);
-      const hash = [
-        ...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)),
-      ]
-        .map((value) => value.toString(16).padStart(2, "0"))
-        .join("");
-      if (existingHashes.has(hash)) {
-        setError(`${file.name} duplicates an existing asset.`);
-        continue;
-      }
-      existingHashes.add(hash);
-      const id = slug(file.name.replace(/\.[^.]+$/, ""));
-      const path = `assets/${file.name}`;
-      const assetFile: DraftSourceFile = {
-        path,
-        kind: "binary",
-        bytes,
-        mediaType: file.type || "application/octet-stream",
-        checksum: `sha256-${hash}`,
-      };
-      nextDraft = {
-        ...nextDraft,
-        sourceFiles: [
-          ...nextDraft.sourceFiles.filter((item) => item.path !== path),
-          assetFile,
-        ],
-      };
-      nextPackage = Object.assign(nextPackage, {
-        assets: [
-          ...(nextPackage.assets ?? []).filter((item) => item.id !== id),
-          {
-            id,
-            source: path,
-            media_type: file.type || "application/octet-stream",
-            title: file.name,
-            integrity: `sha256-${hash}`,
-          },
-        ],
-      });
+    if (!pkg || selected.length === 0 || assetBusy) return;
+    setAssetBusy(true);
+    setAssetMessage(undefined);
+    setError(undefined);
+    try {
+      const next = await addDraftAssets(
+        draft,
+        pkg,
+        await Promise.all(
+          selected.map(async (file) => ({
+            name: file.name,
+            type: file.type,
+            bytes: await file.arrayBuffer(),
+          })),
+        ),
+      );
+      setDraft(next);
+      setAssetMessage(
+        `${selected.length} asset${selected.length === 1 ? "" : "s"} added without changing existing files.`,
+      );
+    } finally {
+      setAssetBusy(false);
     }
-    setDraft(regenerateFromPackage(nextDraft, nextPackage, "Add assets"));
+  };
+
+  const replaceAsset = async (assetId: string, file: File) => {
+    if (!pkg || assetBusy) return;
+    setAssetBusy(true);
+    setAssetMessage(undefined);
+    setError(undefined);
+    try {
+      setDraft(
+        await replaceDraftAsset(draft, pkg, assetId, {
+          name: file.name,
+          type: file.type,
+          bytes: await file.arrayBuffer(),
+        }),
+      );
+      setAssetMessage(
+        `Asset ${assetId} was replaced; its reference is unchanged.`,
+      );
+    } finally {
+      setAssetBusy(false);
+    }
   };
 
   return (
@@ -1856,6 +1847,7 @@ export function StudioDraftWorkspace({
               <input
                 type="file"
                 multiple
+                disabled={assetBusy}
                 onChange={(event: ChangeEvent<HTMLInputElement>) => {
                   const selected = [...(event.target.files ?? [])];
                   event.target.value = "";
@@ -1869,18 +1861,14 @@ export function StudioDraftWorkspace({
                 }}
               />
             </label>
+            {assetMessage ? (
+              <p className="studio-success" role="status">
+                {assetMessage}
+              </p>
+            ) : null}
             <div className="asset-grid">
               {(pkg?.assets ?? []).map((asset) => {
-                const usages = draft.sourceFiles
-                  .filter((file) => file.kind === "text")
-                  .filter((file) => {
-                    const text = fileText(file);
-                    return (
-                      text.includes(`asset:${asset.id}`) ||
-                      text.includes(asset.source)
-                    );
-                  })
-                  .map((file) => file.path);
+                const usages = draftAssetUsages(draft, asset, pkg);
                 return (
                   <article key={asset.id}>
                     <strong>{asset.id}</strong>
@@ -1933,17 +1921,42 @@ export function StudioDraftWorkspace({
                     >
                       Copy reference
                     </Button>
+                    <label className="button button-secondary asset-replace">
+                      {assetBusy ? "Working…" : "Replace file"}
+                      <input
+                        type="file"
+                        disabled={assetBusy}
+                        onChange={(event) => {
+                          const replacement = event.target.files?.[0];
+                          event.target.value = "";
+                          if (replacement)
+                            void replaceAsset(asset.id, replacement).catch(
+                              (reason) =>
+                                setError(
+                                  reason instanceof Error
+                                    ? reason.message
+                                    : "Asset replacement failed.",
+                                ),
+                            );
+                        }}
+                      />
+                    </label>
                     <Button
                       className="button-danger"
                       onClick={() => {
+                        if (usages.length) {
+                          setError(
+                            `Remove references to ${asset.id} from ${usages.join(", ")} before deleting the asset.`,
+                          );
+                          return;
+                        }
+                        if (!pkg) return;
                         if (
-                          usages.length &&
                           !confirm(
-                            `This asset is referenced in ${usages.length} file(s). Remove it anyway?`,
+                            `Delete asset “${asset.id}” from this draft?`,
                           )
                         )
                           return;
-                        if (!pkg) return;
                         const nextPackage = Object.assign(
                           structuredClone(pkg),
                           {
@@ -2098,6 +2111,12 @@ export function StudioDraftWorkspace({
                 >
                   Export compiled ZIP
                 </Button>
+                <Button
+                  className="button-secondary"
+                  onClick={() => changeSection("content")}
+                >
+                  Exit preview
+                </Button>
               </div>
             </header>
             {previewUrl ? (
@@ -2105,6 +2124,7 @@ export function StudioDraftWorkspace({
                 className={draft.editor.previewSize}
                 src={previewUrl}
                 title="Theoria reader preview"
+                sandbox="allow-forms allow-popups allow-same-origin allow-scripts"
               />
             ) : (
               <div className="empty-state">

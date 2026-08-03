@@ -178,9 +178,40 @@ test("search, filters, stable sorting, and pagination use shareable URLs", async
   await seed(page);
   await page.goto("/explore");
   await page.getByLabel("Search packages").fill("calculus");
+  await expect(page).toHaveURL(/\/explore$/);
+  await expect(
+    page
+      .getByRole("heading", { name: "11 public packages", exact: true })
+      .last(),
+  ).toBeVisible();
+  await page.getByLabel("Search packages").press("Enter");
   await expect(page).toHaveURL(/q=calculus/);
   await expect(
     page.getByRole("heading", { name: "Calculus Foundations" }),
+  ).toBeVisible();
+  await page.getByLabel("Search packages").fill("planetary");
+  await expect(page).toHaveURL(/q=calculus/);
+  await expect(
+    page.getByRole("heading", { name: "Calculus Foundations" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Search" }).click();
+  await expect(page).toHaveURL(/q=planetary/);
+  await expect(
+    page.getByRole("heading", { name: "Earth Science" }),
+  ).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/q=calculus/);
+  await expect(page.getByLabel("Search packages")).toHaveValue("calculus");
+  await page.goForward();
+  await expect(page).toHaveURL(/q=planetary/);
+  await expect(page.getByLabel("Search packages")).toHaveValue("planetary");
+  await page.getByLabel("Search packages").fill("derivative");
+  await page.getByLabel("Search packages").press("Enter");
+  await page.getByLabel("Search packages").fill("planetary");
+  await page.getByLabel("Search packages").press("Enter");
+  await expect(page).toHaveURL(/q=planetary/);
+  await expect(
+    page.getByRole("heading", { name: "Earth Science" }),
   ).toBeVisible();
 
   await page.goto("/explore?q=planetary");

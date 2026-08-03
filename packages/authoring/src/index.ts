@@ -4,6 +4,7 @@ import type {
   ReaderPackage,
   SerializedFile,
 } from "@theoria/mcf-browser";
+import { normalizeDirectoryFiles } from "@theoria/mcf-browser";
 import {
   draftId,
   packageId,
@@ -40,6 +41,208 @@ export const draftInput = (draft: PackageDraft): PackageInput => ({
 
 export const fileText = (file: DraftSourceFile): string =>
   decoder.decode(file.bytes);
+
+export interface DraftAssetInput {
+  readonly name: string;
+  readonly type?: string;
+  readonly bytes: ArrayBuffer;
+}
+
+const knownAssetMediaTypes: Readonly<Record<string, string>> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+  svg: "image/svg+xml",
+  mp3: "audio/mpeg",
+  ogg: "audio/ogg",
+  wav: "audio/wav",
+  mp4: "video/mp4",
+  webm: "video/webm",
+  pdf: "application/pdf",
+  vtt: "text/vtt",
+  txt: "text/plain",
+  md: "text/markdown",
+  markdown: "text/markdown",
+  yaml: "application/yaml",
+  yml: "application/yaml",
+  json: "application/json",
+  csv: "text/csv",
+};
+
+export function assetFilename(value: string): string {
+  const filename = value
+    .replaceAll("\\", "/")
+    .split("/")
+    .at(-1)
+    ?.normalize("NFC")
+    .trim();
+  if (!filename || filename === "." || filename === "..")
+    throw new Error("The selected asset has no safe filename.");
+  return filename;
+}
+
+export function assetMediaType(filename: string, provided = ""): string {
+  const extension = filename.split(".").at(-1)?.toLowerCase() ?? "";
+  const inferred = knownAssetMediaTypes[extension];
+  const normalized = provided.split(";")[0]?.trim().toLowerCase() ?? "";
+  if (inferred && (!normalized || normalized === "application/octet-stream"))
+    return inferred;
+  return /^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/.test(normalized)
+    ? normalized
+    : (inferred ?? "application/octet-stream");
+}
+
+const base64 = (value: ArrayBuffer): string => {
+  let binary = "";
+  for (const byte of new Uint8Array(value)) binary += String.fromCharCode(byte);
+  return btoa(binary);
+};
+
+export async function assetIntegrity(bytes: ArrayBuffer): Promise<string> {
+  return `sha256-${base64(await crypto.subtle.digest("SHA-256", bytes))}`;
+}
+
+const availableAssetPath = (
+  filename: string,
+  existing: readonly string[],
+): string => {
+  const occupied = new Set(existing.map((path) => path.toLocaleLowerCase()));
+  const dot = filename.lastIndexOf(".");
+  const stem = dot > 0 ? filename.slice(0, dot) : filename;
+  const extension = dot > 0 ? filename.slice(dot) : "";
+  let candidate = `assets/${filename}`;
+  let suffix = 2;
+  while (occupied.has(candidate.toLocaleLowerCase()))
+    candidate = `assets/${stem}-${suffix++}${extension}`;
+  return candidate;
+};
+
+async function draftAsset(
+  input: DraftAssetInput,
+  path: string,
+): Promise<{
+  readonly file: DraftSourceFile;
+  readonly manifest: {
+    readonly source: string;
+    readonly media_type: string;
+    readonly title: string;
+    readonly integrity: string;
+  };
+}> {
+  const filename = assetFilename(input.name);
+  const bytes = input.bytes.slice(0);
+  // Reuse the archive boundary for executable-extension, size, traversal, and
+  // active-SVG checks before any draft state changes.
+  normalizeDirectoryFiles([{ path, bytes }]);
+  const integrity = await assetIntegrity(bytes);
+  const mediaType = assetMediaType(filename, input.type);
+  return {
+    file: {
+      path,
+      kind: isTextPath(path) ? "text" : "binary",
+      bytes,
+      mediaType,
+      checksum: integrity,
+    },
+    manifest: {
+      source: path,
+      media_type: mediaType,
+      title: filename,
+      integrity,
+    },
+  };
+}
+
+export async function addDraftAssets(
+  draft: PackageDraft,
+  pkg: ReaderPackage,
+  inputs: readonly DraftAssetInput[],
+): Promise<PackageDraft> {
+  let nextDraft = draft;
+  const nextPackage = structuredClone(pkg);
+  const assets = [...(nextPackage.assets ?? [])];
+  for (const input of inputs) {
+    const filename = assetFilename(input.name);
+    const path = availableAssetPath(
+      filename,
+      nextDraft.sourceFiles.map((file) => file.path),
+    );
+    const prepared = await draftAsset(input, path);
+    const id = uniqueId(
+      filename.replace(/\.[^.]+$/, ""),
+      assets.map((asset) => asset.id),
+    );
+    nextDraft = {
+      ...nextDraft,
+      sourceFiles: [...nextDraft.sourceFiles, prepared.file],
+    };
+    assets.push({ id, ...prepared.manifest });
+  }
+  nextPackage.assets = assets;
+  return regenerateFromPackage(nextDraft, nextPackage, "Add assets");
+}
+
+export async function replaceDraftAsset(
+  draft: PackageDraft,
+  pkg: ReaderPackage,
+  assetId: string,
+  input: DraftAssetInput,
+): Promise<PackageDraft> {
+  const nextPackage = structuredClone(pkg);
+  const target = (nextPackage.assets ?? []).find(
+    (asset) => asset.id === assetId,
+  );
+  if (!target) throw new Error(`Asset "${assetId}" no longer exists.`);
+  const previousSource = target.source;
+  const filename = assetFilename(input.name);
+  const path = availableAssetPath(
+    filename,
+    draft.sourceFiles
+      .filter((file) => file.path !== previousSource)
+      .map((file) => file.path),
+  );
+  const prepared = await draftAsset(input, path);
+  Object.assign(target, prepared.manifest);
+  return regenerateFromPackage(
+    {
+      ...draft,
+      sourceFiles: [
+        ...draft.sourceFiles.filter((file) => file.path !== previousSource),
+        prepared.file,
+      ],
+    },
+    nextPackage,
+    `Replace asset ${assetId}`,
+  );
+}
+
+export function draftAssetUsages(
+  draft: PackageDraft,
+  asset: { readonly id: string; readonly source: string },
+  pkg?: ReaderPackage,
+): readonly string[] {
+  const sourceUsages = draft.sourceFiles
+    .filter((file) => file.kind === "text")
+    .filter((file) => {
+      const text = fileText(file);
+      return (
+        text.includes(`asset:${asset.id}`) ||
+        (file.path !== "manifest.yaml" && text.includes(asset.source))
+      );
+    })
+    .map((file) => file.path);
+  if (pkg) {
+    const metadata = structuredClone(pkg) as ReaderPackage & {
+      assets?: unknown;
+    };
+    metadata.assets = (pkg.assets ?? []).filter((item) => item.id !== asset.id);
+    if (JSON.stringify(metadata).includes(asset.source))
+      sourceUsages.push("manifest metadata");
+  }
+  return [...new Set(sourceUsages)];
+}
 
 const clean = (value: Record<string, unknown>): Record<string, unknown> =>
   Object.fromEntries(
