@@ -58,8 +58,8 @@ test("theme selection persists and system mode follows the browser", async ({
   page,
 }) => {
   await page.goto("/");
-  const theme = page.locator(".platform-utilities").getByLabel("Theme");
-  await theme.selectOption("dark");
+  const theme = page.locator(".platform-utilities").getByLabel(/Theme/);
+  await theme.click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await expect
     .poll(() =>
@@ -68,10 +68,10 @@ test("theme selection persists and system mode follows the browser", async ({
     .toBe("rgb(16, 20, 17)");
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await expect(theme).toHaveValue("dark");
+  await expect(theme).toHaveAttribute("aria-label", /dark mode/);
 
   await page.emulateMedia({ colorScheme: "dark" });
-  await theme.selectOption("system");
+  await theme.click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.emulateMedia({ colorScheme: "light" });
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");

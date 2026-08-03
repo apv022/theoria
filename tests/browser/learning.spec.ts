@@ -9,12 +9,15 @@ const canonicalLearningFixtures = [
 
 test.beforeEach(({ page }, testInfo) => {
   void page;
-  if (!canonicalLearningFixtures && testInfo.title.includes("standalone")) {
+  if (
+    !canonicalLearningFixtures &&
+    /standalone|cached multi-lesson|all-question/.test(testInfo.title)
+  ) {
     testInfo.skip();
   }
 });
 
-const small = "/home/apv/theoria/fixtures/local/minimal-1.1.mcf.zip";
+const small = `${process.cwd()}/fixtures/local/minimal-1.1.mcf.zip`;
 
 async function importSmall(page: Page) {
   await page.goto("/library");

@@ -53,7 +53,7 @@ test("signup restores its session, edits a public profile, and explicitly claims
   await page.goto("/library");
   await page
     .locator('input[type="file"]')
-    .setInputFiles("/home/apv/theoria/fixtures/local/minimal-1.1.mcf.zip");
+    .setInputFiles(`${process.cwd()}/fixtures/local/minimal-1.1.mcf.zip`);
   await page.getByRole("link", { name: "Start learning" }).click();
   await expect(
     page.getByRole("heading", { name: "Welcome", exact: true }),
