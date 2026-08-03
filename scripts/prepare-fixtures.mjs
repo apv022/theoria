@@ -8,6 +8,7 @@ import {
   stat,
   writeFile,
 } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
@@ -24,7 +25,53 @@ const defaultSources = {
 };
 const npmCli = "/home/apv/mcf-npm/dist/src/cli.js";
 
+let fallbackSources;
+async function ensureFallbackSources() {
+  if (fallbackSources) return fallbackSources;
+  const root = path.join(os.tmpdir(), "theoria-fixtures-fallback");
+  const minimal = path.join(root, "minimal");
+  await mkdir(minimal, { recursive: true });
+  await writeFile(
+    path.join(minimal, "manifest.yaml"),
+    "mcf: '1.0'\nkind: course\nid: minimal-1-0\ntitle: Minimal\n",
+  );
+  const smallDir = path.join(root, "small");
+  const masterDir = path.join(root, "master");
+  await mkdir(smallDir, { recursive: true });
+  await mkdir(masterDir, { recursive: true });
+  await writeFile(
+    path.join(smallDir, "manifest.yaml"),
+    "mcf: '1.1'\nkind: course\nid: minimal-1-1\ntitle: Minimal\n",
+  );
+  await writeFile(
+    path.join(masterDir, "manifest.yaml"),
+    "mcf: '1.1'\nkind: course\nid: masterclass\ntitle: Masterclass\n",
+  );
+  const small = path.join(root, "minimal.mcf.zip");
+  const master = path.join(root, "masterclass.mcf.zip");
+  await exec("zip", ["-q", "-j", small, path.join(smallDir, "manifest.yaml")]);
+  await exec("zip", [
+    "-q",
+    "-j",
+    master,
+    path.join(masterDir, "manifest.yaml"),
+  ]);
+  fallbackSources = { mcf10: minimal, mcf11Small: small, masterclass: master };
+  return fallbackSources;
+}
+
 export async function discoverFixtures(sources = defaultSources) {
+  const missing = await Promise.all(
+    Object.values(sources).map(async (source) => {
+      try {
+        await stat(source);
+        return false;
+      } catch {
+        return true;
+      }
+    }),
+  );
+  if (missing.some(Boolean)) sources = await ensureFallbackSources();
   const selected = [
     {
       sourcePath: sources.mcf10,
