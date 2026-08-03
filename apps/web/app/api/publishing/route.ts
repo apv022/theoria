@@ -27,6 +27,16 @@ const parseMetadata = (value: string): Omit<PublishingRequest, "archive"> => {
   if (
     (parsed.packageId !== undefined &&
       (typeof parsed.packageId !== "string" || !uuid.test(parsed.packageId))) ||
+    (parsed.repositoryId !== undefined &&
+      (typeof parsed.repositoryId !== "string" ||
+        !uuid.test(parsed.repositoryId))) ||
+    (parsed.parentPackageId !== undefined &&
+      (typeof parsed.parentPackageId !== "string" ||
+        !uuid.test(parsed.parentPackageId))) ||
+    (parsed.parentVersionId !== undefined &&
+      (typeof parsed.parentVersionId !== "string" ||
+        !uuid.test(parsed.parentVersionId))) ||
+    Boolean(parsed.parentPackageId) !== Boolean(parsed.parentVersionId) ||
     typeof parsed.slug !== "string" ||
     !/^[a-z][a-z0-9-]{2,62}$/.test(parsed.slug) ||
     typeof parsed.title !== "string" ||

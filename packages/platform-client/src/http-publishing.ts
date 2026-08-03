@@ -47,6 +47,15 @@ export function createHttpPublishingClient(
         "metadata",
         JSON.stringify({
           ...(request.packageId ? { packageId: request.packageId } : {}),
+          ...(request.repositoryId
+            ? { repositoryId: request.repositoryId }
+            : {}),
+          ...(request.parentPackageId
+            ? { parentPackageId: request.parentPackageId }
+            : {}),
+          ...(request.parentVersionId
+            ? { parentVersionId: request.parentVersionId }
+            : {}),
           slug: request.slug,
           title: request.title,
           description: request.description,

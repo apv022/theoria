@@ -847,6 +847,59 @@ h3 {
   flex-basis: 100%;
   margin-top: 0.5rem;
 }
+.repository-action-row,
+.repository-download-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+.repository-tabs {
+  position: sticky;
+  top: var(--header-height, 0);
+  z-index: 2;
+  display: flex;
+  gap: 1.25rem;
+  overflow-x: auto;
+  padding: 0.85rem 0;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+}
+.repository-tabs a {
+  color: var(--muted);
+  text-decoration: none;
+}
+.repository-tabs a:hover,
+.repository-tabs a:focus-visible {
+  color: var(--ink);
+}
+.profile-contact,
+.profile-repository-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+}
+.profile-repository-summary div {
+  min-width: 8rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+}
+.profile-repository-summary dt {
+  color: var(--muted);
+}
+.profile-repository-summary dd {
+  margin: 0.25rem 0 0;
+  font: 2rem var(--display);
+}
+.profile-activity {
+  margin-top: 2rem;
+}
+.profile-activity li {
+  padding: 0.5rem 0;
+}
+.profile-activity time {
+  color: var(--muted);
+}
 .profile-packages {
   margin-top: 4rem;
 }
@@ -3330,6 +3383,27 @@ select,
   .compiler-workspace,
   .org-page {
     width: min(100% - 1rem, 78rem);
+  }
+
+  .profile-heading {
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .profile-heading > div:last-child {
+    min-width: 0;
+  }
+
+  .profile-heading .avatar {
+    flex: 0 0 5rem;
+    width: 5rem;
+    height: 5rem;
+    font-size: 3rem;
+  }
+
+  .profile-heading h1 {
+    overflow-wrap: anywhere;
+    font-size: clamp(2.4rem, 12vw, 4rem);
   }
 
   .dashboard-intro,

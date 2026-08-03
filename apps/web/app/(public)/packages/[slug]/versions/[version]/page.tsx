@@ -26,6 +26,13 @@ export default async function PackageVersionPage({
       </div>
     );
   const manifest = release.version.manifestSummary;
+  const network = await platform.repository.getNetwork(release.package.id);
+  const formatBytes = (bytes: number) =>
+    bytes < 1024
+      ? `${bytes} B`
+      : bytes < 1024 * 1024
+        ? `${(bytes / 1024).toFixed(1)} KiB`
+        : `${(bytes / 1024 / 1024).toFixed(1)} MiB`;
   return (
     <div className="page-wrap narrow-page package-version-page">
       <p className="section-label">Immutable package version</p>
@@ -54,6 +61,10 @@ export default async function PackageVersionPage({
           <dd>
             <code>{release.version.sourceChecksum}</code>
           </dd>
+        </div>
+        <div>
+          <dt>Package size</dt>
+          <dd>{formatBytes(release.version.sourceSize)}</dd>
         </div>
         <div>
           <dt>Validation</dt>
@@ -90,7 +101,7 @@ export default async function PackageVersionPage({
           <dt>Authors</dt>
           <dd>
             {manifest.authors.length
-              ? manifest.authors.join(", ")
+              ? manifest.authors.map((author) => author.name).join(", ")
               : "Not declared"}
           </dd>
         </div>
@@ -145,6 +156,11 @@ export default async function PackageVersionPage({
         manifestId={String(manifest.id)}
         manifestVersion={manifest.version}
         sourceChecksum={release.version.sourceChecksum}
+        remotePackageId={release.package.id}
+        remoteVersionId={release.version.id}
+        title={release.package.title}
+        creatorHandle={release.package.creator.handle}
+        initialNetwork={network}
       />
       <Notice title="Canonical source is immutable">
         This release points to the validated source `.mcf.zip`. Browser-compiled

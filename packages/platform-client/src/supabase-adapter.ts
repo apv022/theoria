@@ -11,6 +11,7 @@ import type {
   AuthResult,
   AuthStateChange,
   PlatformClient,
+  ProfileRepositorySummary,
   PublishedPackage,
   PublishedPackageVersion,
   ProfileClient,
@@ -21,6 +22,7 @@ import type {
   PublishingRequest,
   PublishingResult,
   RepositoryClient,
+  RepositoryNetwork,
   RepositoryQuery,
   RepositoryResult,
   RepositorySubject,
@@ -39,6 +41,8 @@ type ProfileRow = {
   display_name: string;
   bio: string;
   avatar_path: string | null;
+  location: string;
+  website_url: string;
   created_at: string;
   updated_at: string;
 };
@@ -51,6 +55,8 @@ type PackageRow = {
   description: string;
   visibility: "public" | "unlisted" | "private";
   latest_version_id: string | null;
+  parent_package_id: string | null;
+  parent_version_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -68,6 +74,7 @@ type PackageVersionRow = {
     | "asset_collection";
   source_storage_path: string;
   source_checksum: string;
+  source_size: number;
   manifest_summary: Record<string, unknown>;
   validation_summary: Record<string, unknown>;
   release_notes: string;
@@ -152,6 +159,8 @@ export type SupabaseDatabase = {
           display_name?: string;
           bio?: string;
           avatar_path?: string | null;
+          location?: string;
+          website_url?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -160,6 +169,8 @@ export type SupabaseDatabase = {
           display_name?: string;
           bio?: string;
           avatar_path?: string | null;
+          location?: string;
+          website_url?: string;
           updated_at?: string;
         };
         Relationships: [];
@@ -174,6 +185,8 @@ export type SupabaseDatabase = {
           description?: string;
           visibility?: "public" | "unlisted" | "private";
           latest_version_id?: string | null;
+          parent_package_id?: string | null;
+          parent_version_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -197,6 +210,7 @@ export type SupabaseDatabase = {
           package_kind: PackageVersionRow["package_kind"];
           source_storage_path: string;
           source_checksum: string;
+          source_size?: number;
           manifest_summary: Record<string, unknown>;
           validation_summary: Record<string, unknown>;
           release_notes?: string;
@@ -264,6 +278,40 @@ export type SupabaseDatabase = {
           package_count: number;
         }[];
       };
+      repository_package_network: {
+        Args: { requested_package_id: string };
+        Returns: {
+          star_count: number;
+          fork_count: number;
+          viewer_starred: boolean;
+          parent_slug: string | null;
+          parent_title: string | null;
+          parent_version: string | null;
+          parent_creator_handle: string | null;
+          direct_forks: unknown;
+        }[];
+      };
+      repository_starred_package_ids: {
+        Args: { requested_limit: number; requested_offset: number };
+        Returns: {
+          package_id: string;
+          starred_at: string;
+          total_count: number;
+        }[];
+      };
+      set_package_star: {
+        Args: { requested_package_id: string; requested_starred: boolean };
+        Returns: { starred: boolean; star_count: number }[];
+      };
+      profile_repository_summary: {
+        Args: { requested_handle: string };
+        Returns: {
+          public_package_count: number;
+          total_version_count: number;
+          total_stars_received: number;
+          recent_activity: unknown;
+        }[];
+      };
       publish_package_version: {
         Args: {
           requested_package_id: string;
@@ -279,6 +327,9 @@ export type SupabaseDatabase = {
           requested_manifest_summary: Record<string, unknown>;
           requested_validation_summary: Record<string, unknown>;
           requested_release_notes: string;
+          requested_source_size: number;
+          requested_parent_package_id: string | null;
+          requested_parent_version_id: string | null;
         };
         Returns: {
           package_id: string;
@@ -329,7 +380,7 @@ export type SupabaseDatabase = {
 };
 
 const profileFields =
-  "id, handle, display_name, bio, avatar_path, created_at, updated_at";
+  "id, handle, display_name, bio, avatar_path, location, website_url, created_at, updated_at";
 
 const profileFromRow = (row: ProfileRow): PublicProfile => ({
   id: row.id,
@@ -337,6 +388,8 @@ const profileFromRow = (row: ProfileRow): PublicProfile => ({
   displayName: row.display_name,
   bio: row.bio,
   ...(row.avatar_path ? { avatarPath: row.avatar_path } : {}),
+  ...(row.location ? { location: row.location } : {}),
+  ...(row.website_url ? { websiteUrl: row.website_url } : {}),
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -402,12 +455,52 @@ class SupabaseProfiles implements ProfileClient {
         display_name: update.displayName.trim(),
         bio: update.bio.trim(),
         avatar_path: update.avatarPath?.trim() || null,
+        location: update.location?.trim() ?? "",
+        website_url: update.websiteUrl?.trim() ?? "",
       })
       .eq("id", userData.user.id)
       .select(profileFields)
       .single();
     if (error) throw error;
     return profileFromRow(data);
+  }
+
+  async getRepositorySummary(
+    handle: string,
+  ): Promise<ProfileRepositorySummary> {
+    const { data, error } = await this.client.rpc(
+      "profile_repository_summary",
+      { requested_handle: handle.trim().toLowerCase() },
+    );
+    if (error) throw error;
+    const row = data[0];
+    if (!row)
+      return {
+        publicPackageCount: 0,
+        totalVersionCount: 0,
+        totalStarsReceived: 0,
+        recentActivity: [],
+      };
+    const recentActivity = Array.isArray(row.recent_activity)
+      ? row.recent_activity.filter(
+          (item): item is ProfileRepositorySummary["recentActivity"][number] =>
+            Boolean(
+              item &&
+                typeof item === "object" &&
+                typeof (item as { slug?: unknown }).slug === "string" &&
+                typeof (item as { title?: unknown }).title === "string" &&
+                typeof (item as { version?: unknown }).version === "string" &&
+                typeof (item as { publishedAt?: unknown }).publishedAt ===
+                  "string",
+            ),
+        )
+      : [];
+    return {
+      publicPackageCount: Number(row.public_package_count),
+      totalVersionCount: Number(row.total_version_count),
+      totalStarsReceived: Number(row.total_stars_received),
+      recentActivity,
+    };
   }
 }
 
@@ -528,9 +621,9 @@ class SupabaseAuthentication implements AuthenticationClient {
 }
 
 const packageFields =
-  "id, owner_id, slug, title, description, visibility, latest_version_id, created_at, updated_at";
+  "id, owner_id, slug, title, description, visibility, latest_version_id, parent_package_id, parent_version_id, created_at, updated_at";
 const versionFields =
-  "id, package_id, version, mcf_version, package_kind, source_storage_path, source_checksum, manifest_summary, validation_summary, release_notes, published_at";
+  "id, package_id, version, mcf_version, package_kind, source_storage_path, source_checksum, source_size, manifest_summary, validation_summary, release_notes, published_at";
 
 const versionFromRow = (row: PackageVersionRow): PublishedPackageVersion =>
   ({
@@ -541,6 +634,7 @@ const versionFromRow = (row: PackageVersionRow): PublishedPackageVersion =>
     packageKind: row.package_kind,
     sourceStoragePath: row.source_storage_path,
     sourceChecksum: row.source_checksum,
+    sourceSize: Number(row.source_size),
     manifestSummary: row.manifest_summary,
     validationSummary: row.validation_summary,
     releaseNotes: row.release_notes,
@@ -637,6 +731,8 @@ class SupabaseRepository implements RepositoryClient {
       display_name: row.creator_display_name,
       bio: row.creator_bio,
       avatar_path: row.creator_avatar_path,
+      location: "",
+      website_url: "",
       created_at: row.creator_created_at,
       updated_at: row.creator_updated_at,
     });
@@ -648,6 +744,7 @@ class SupabaseRepository implements RepositoryClient {
       package_kind: row.package_kind,
       source_storage_path: row.source_storage_path,
       source_checksum: row.source_checksum,
+      source_size: 0,
       manifest_summary: row.manifest_summary,
       validation_summary: row.validation_summary,
       release_notes: row.release_notes,
@@ -723,6 +820,12 @@ class SupabaseRepository implements RepositoryClient {
       ...(data.latest_version_id
         ? { latestVersionId: data.latest_version_id }
         : {}),
+      ...(data.parent_package_id
+        ? { parentPackageId: data.parent_package_id }
+        : {}),
+      ...(data.parent_version_id
+        ? { parentVersionId: data.parent_version_id }
+        : {}),
       createdAt: data.created_at,
       updatedAt: data.updated_at,
       creator,
@@ -756,6 +859,125 @@ class SupabaseRepository implements RepositoryClient {
         true,
       );
     return data;
+  }
+
+  async getNetwork(packageId: string): Promise<RepositoryNetwork> {
+    const { data, error } = await this.client.rpc(
+      "repository_package_network",
+      { requested_package_id: packageId },
+    );
+    if (error) throw this.operationError(error);
+    const row = data[0];
+    if (!row)
+      return {
+        starCount: 0,
+        forkCount: 0,
+        viewerStarred: false,
+        directForks: [],
+      };
+    const directForks = Array.isArray(row.direct_forks)
+      ? row.direct_forks.filter(
+          (item): item is RepositoryNetwork["directForks"][number] =>
+            Boolean(
+              item &&
+                typeof item === "object" &&
+                typeof (item as { slug?: unknown }).slug === "string" &&
+                typeof (item as { title?: unknown }).title === "string" &&
+                typeof (item as { creatorHandle?: unknown }).creatorHandle ===
+                  "string" &&
+                typeof (item as { createdAt?: unknown }).createdAt === "string",
+            ),
+        )
+      : [];
+    return {
+      starCount: Number(row.star_count),
+      forkCount: Number(row.fork_count),
+      viewerStarred: row.viewer_starred,
+      ...(row.parent_slug &&
+      row.parent_title &&
+      row.parent_version &&
+      row.parent_creator_handle
+        ? {
+            parent: {
+              slug: row.parent_slug,
+              title: row.parent_title,
+              version: row.parent_version,
+              creatorHandle: row.parent_creator_handle,
+            },
+          }
+        : {}),
+      directForks,
+    };
+  }
+
+  async setStar(packageId: string, starred: boolean) {
+    const { data, error } = await this.client.rpc("set_package_star", {
+      requested_package_id: packageId,
+      requested_starred: starred,
+    });
+    if (error || !data[0])
+      throw new PlatformOperationError(
+        "STAR_FAILED",
+        error?.message ?? "The star could not be updated.",
+        true,
+      );
+    return {
+      starred: data[0].starred,
+      starCount: Number(data[0].star_count),
+    };
+  }
+
+  async listStarred(page = 1, pageSize = 12): Promise<RepositoryResult> {
+    const normalizedPage = Math.max(1, Math.trunc(page));
+    const normalizedPageSize = Math.min(24, Math.max(1, Math.trunc(pageSize)));
+    const { data, error } = await this.client.rpc(
+      "repository_starred_package_ids",
+      {
+        requested_limit: normalizedPageSize,
+        requested_offset: (normalizedPage - 1) * normalizedPageSize,
+      },
+    );
+    if (error)
+      throw new PlatformOperationError(
+        "STARRED_UNAVAILABLE",
+        error.message,
+        true,
+      );
+    const values = await Promise.all(
+      data.map((row) => this.getPackage("id", row.package_id)),
+    );
+    const packages: PublishedPackage[] = [];
+    for (const value of values) if (value) packages.push(value);
+    const total = Number(data[0]?.total_count ?? 0);
+    return {
+      packages,
+      total,
+      page: normalizedPage,
+      pageSize: normalizedPageSize,
+      totalPages: total ? Math.ceil(total / normalizedPageSize) : 0,
+    };
+  }
+
+  async listOwned(): Promise<readonly PublishedPackage[]> {
+    const { data: authData, error: authError } =
+      await this.client.auth.getUser();
+    if (authError || !authData.user)
+      throw new PlatformOperationError(
+        "AUTH_REQUIRED",
+        "Sign in to list owned repositories.",
+      );
+    const { data, error } = await this.client
+      .from("packages")
+      .select("id")
+      .eq("owner_id", authData.user.id)
+      .order("updated_at", { ascending: false });
+    if (error) throw this.operationError(error);
+    const values = await Promise.all(
+      data.map((row) => this.getPackage("id", row.id)),
+    );
+    const packages: PublishedPackage[] = [];
+    for (const value of values) if (value) packages.push(value);
+    return packages;
   }
 }
 
@@ -802,19 +1024,6 @@ class SupabasePublishing implements PublishingClient {
         "ARCHIVE_TOO_LARGE",
         "Source archives may not exceed 50 MiB.",
       );
-    if (request.packageId) {
-      const { data: available, error: availabilityError } =
-        await this.client.rpc("package_version_available", {
-          candidate_package_id: request.packageId,
-          candidate_version: request.version,
-        });
-      if (availabilityError) throw availabilityError;
-      if (!available)
-        throw new PlatformOperationError(
-          "VERSION_CONFLICT",
-          "That package version already exists or is not owned by this account.",
-        );
-    }
     const actualChecksum = await sha256(request.archive);
     if (actualChecksum !== request.sourceChecksum)
       throw new PlatformOperationError(
@@ -829,7 +1038,8 @@ class SupabasePublishing implements PublishingClient {
         "AUTH_REQUIRED",
         "Sign in before publishing.",
       );
-    const packageId = request.packageId ?? crypto.randomUUID();
+    const packageId =
+      request.packageId ?? request.repositoryId ?? crypto.randomUUID();
     const storagePath = `packages/${authData.user.id}/${packageId}/${request.version}/${request.sourceChecksum}.mcf.zip`;
     options.onProgress?.("uploading", 35);
     const { error: uploadError } = await this.client.storage
@@ -839,7 +1049,9 @@ class SupabasePublishing implements PublishingClient {
         contentType: "application/zip",
         upsert: false,
       });
-    if (uploadError)
+    const alreadyUploaded =
+      uploadError && /already exists|duplicate|409/i.test(uploadError.message);
+    if (uploadError && !alreadyUploaded)
       throw new PlatformOperationError(
         "UPLOAD_FAILED",
         uploadError.message,
@@ -847,7 +1059,8 @@ class SupabasePublishing implements PublishingClient {
       );
 
     if (options.signal?.aborted) {
-      await this.client.storage.from("package-sources").remove([storagePath]);
+      if (!alreadyUploaded)
+        await this.client.storage.from("package-sources").remove([storagePath]);
       throw new DOMException("Publishing was cancelled.", "AbortError");
     }
     options.onProgress?.("finalizing", 80);
@@ -866,9 +1079,13 @@ class SupabasePublishing implements PublishingClient {
       requested_validation_summary:
         request.validationSummary as unknown as Record<string, unknown>,
       requested_release_notes: request.releaseNotes,
+      requested_source_size: request.archive.size,
+      requested_parent_package_id: request.parentPackageId ?? null,
+      requested_parent_version_id: request.parentVersionId ?? null,
     });
     if (error || !data[0]) {
-      await this.client.storage.from("package-sources").remove([storagePath]);
+      if (!alreadyUploaded)
+        await this.client.storage.from("package-sources").remove([storagePath]);
       const duplicate = /duplicate|already exists|23505/i.test(
         error?.message ?? "",
       );

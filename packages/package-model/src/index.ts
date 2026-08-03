@@ -87,9 +87,20 @@ export interface PackageDraft {
   readonly latestCompilationId?: string;
   readonly owner?: LocalOwnershipReference;
   readonly publication?: DraftPublicationReference;
+  readonly origin?: DraftOriginLineage;
   readonly editor: DraftEditorState;
   readonly commands: readonly DraftCommandRecord[];
   readonly validation: ValidationSummary;
+}
+
+export interface DraftOriginLineage {
+  readonly packageId: string;
+  readonly versionId: string;
+  readonly slug: string;
+  readonly version: string;
+  readonly title: string;
+  readonly creatorHandle: string;
+  readonly copiedAt: string;
 }
 
 export interface DraftPublicationReference {

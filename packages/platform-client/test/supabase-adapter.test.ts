@@ -98,6 +98,8 @@ class FakeSupabase {
         display_name: options.data.display_name,
         bio: "",
         avatar_path: null,
+        location: "",
+        website_url: "",
         created_at: "2026-07-29T00:00:00.000Z",
         updated_at: "2026-07-29T00:00:00.000Z",
       });
@@ -185,6 +187,8 @@ test("login, recovery, password change, logout, and expired sessions are explici
     display_name: "Creator One",
     bio: "",
     avatar_path: null,
+    location: "",
+    website_url: "",
     created_at: "2026-07-29T00:00:00.000Z",
     updated_at: "2026-07-29T00:00:00.000Z",
   });

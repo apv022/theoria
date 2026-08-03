@@ -39,6 +39,7 @@ export function AccountNavigation({
         </summary>
         <div className="account-menu">
           <Link href={`/profiles/${identity.profile.handle}`}>Profile</Link>
+          <Link href="/stars">Starred courses</Link>
           <Link href="/settings">Settings</Link>
           <Button
             disabled={busy}

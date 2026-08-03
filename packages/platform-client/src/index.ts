@@ -22,6 +22,8 @@ export interface PublicProfile {
   readonly displayName: string;
   readonly bio: string;
   readonly avatarPath?: string;
+  readonly location?: string;
+  readonly websiteUrl?: string;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -69,12 +71,29 @@ export interface ProfileUpdate {
   readonly displayName: string;
   readonly bio: string;
   readonly avatarPath?: string | null;
+  readonly location?: string;
+  readonly websiteUrl?: string;
+}
+
+export interface ProfileRepositoryActivity {
+  readonly slug: string;
+  readonly title: string;
+  readonly version: string;
+  readonly publishedAt: string;
+}
+
+export interface ProfileRepositorySummary {
+  readonly publicPackageCount: number;
+  readonly totalVersionCount: number;
+  readonly totalStarsReceived: number;
+  readonly recentActivity: readonly ProfileRepositoryActivity[];
 }
 
 export interface ProfileClient {
   getByHandle(handle: string): Promise<PublicProfile | null>;
   getOwn(): Promise<PublicProfile>;
   updateOwn(update: ProfileUpdate): Promise<PublicProfile>;
+  getRepositorySummary(handle: string): Promise<ProfileRepositorySummary>;
 }
 
 export interface UserOwner {
@@ -131,6 +150,7 @@ export interface PublishedPackageVersion {
   readonly packageKind: PackageKind;
   readonly sourceStoragePath: string;
   readonly sourceChecksum: string;
+  readonly sourceSize: number;
   readonly manifestSummary: PackageManifest & Readonly<Record<string, unknown>>;
   readonly validationSummary: ValidationSummary;
   readonly releaseNotes: string;
@@ -145,10 +165,37 @@ export interface PublishedPackage {
   readonly description: string;
   readonly visibility: PackageVisibility;
   readonly latestVersionId?: string;
+  readonly parentPackageId?: string;
+  readonly parentVersionId?: string;
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly creator: PublicProfile;
   readonly versions: readonly PublishedPackageVersion[];
+}
+
+export interface RepositoryFork {
+  readonly slug: string;
+  readonly title: string;
+  readonly creatorHandle: string;
+  readonly createdAt: string;
+}
+
+export interface RepositoryNetwork {
+  readonly starCount: number;
+  readonly forkCount: number;
+  readonly viewerStarred: boolean;
+  readonly parent?: {
+    readonly slug: string;
+    readonly title: string;
+    readonly version: string;
+    readonly creatorHandle: string;
+  };
+  readonly directForks: readonly RepositoryFork[];
+}
+
+export interface StarResult {
+  readonly starred: boolean;
+  readonly starCount: number;
 }
 
 export interface RepositoryClient {
@@ -169,10 +216,17 @@ export interface RepositoryClient {
     readonly version: PublishedPackageVersion;
   } | null>;
   downloadSource(slug: string, version: string): Promise<Blob>;
+  getNetwork(packageId: string): Promise<RepositoryNetwork>;
+  setStar(packageId: string, starred: boolean): Promise<StarResult>;
+  listStarred(page?: number, pageSize?: number): Promise<RepositoryResult>;
+  listOwned(): Promise<readonly PublishedPackage[]>;
 }
 
 export interface PublishingRequest {
   readonly packageId?: string;
+  readonly repositoryId?: string;
+  readonly parentPackageId?: string;
+  readonly parentVersionId?: string;
   readonly slug: string;
   readonly title: string;
   readonly description: string;
@@ -357,6 +411,14 @@ export function createUnavailablePlatformClient(): PlatformClient {
       async updateOwn() {
         throw unavailable();
       },
+      async getRepositorySummary() {
+        return {
+          publicPackageCount: 0,
+          totalVersionCount: 0,
+          totalStarsReceived: 0,
+          recentActivity: [],
+        };
+      },
     },
     repository: {
       async search() {
@@ -394,6 +456,23 @@ export function createUnavailablePlatformClient(): PlatformClient {
       },
       async downloadSource() {
         return deferred();
+      },
+      async getNetwork() {
+        return {
+          starCount: 0,
+          forkCount: 0,
+          viewerStarred: false,
+          directForks: [],
+        };
+      },
+      async setStar() {
+        return deferred();
+      },
+      async listStarred() {
+        return deferred();
+      },
+      async listOwned() {
+        return [];
       },
     },
     publishing: {

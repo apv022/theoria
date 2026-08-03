@@ -279,6 +279,35 @@ test("creator listings are public-only and paginated", async ({ page }) => {
   ).toBeVisible();
 });
 
+test("repository and profile layouts fit every required viewport", async ({
+  page,
+}) => {
+  await seed(page);
+  for (const viewport of [
+    { width: 320, height: 568 },
+    { width: 375, height: 667 },
+    { width: 390, height: 844 },
+    { width: 768, height: 1024 },
+    { width: 1280, height: 800 },
+  ]) {
+    await page.setViewportSize(viewport);
+    for (const route of [
+      "/packages/calculus-foundations",
+      "/profiles/catalog_author",
+    ]) {
+      await page.goto(route);
+      const overflow = await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth,
+      );
+      expect(overflow, `${route} at ${viewport.width}px`).toBeLessThanOrEqual(
+        1,
+      );
+    }
+  }
+});
+
 test("empty, offline, and repository-error states remain truthful", async ({
   page,
   context,
@@ -386,4 +415,46 @@ test("invalid repository source never enters the local library", async ({
   await expect(
     page.getByRole("link", { name: /Open in Reader|Continue in Reader/ }),
   ).not.toBeVisible();
+});
+
+test("stars and publishes a local fork with permanent release lineage", async ({
+  page,
+}) => {
+  await signup(page, "network_author");
+  await publishValidCourse(page);
+
+  await page.getByRole("button", { name: /Star Reader Ready Course/ }).click();
+  await expect(
+    page.getByRole("button", { name: /Remove star.*1 stars/ }),
+  ).toBeVisible();
+  await page.goto("/stars");
+  await expect(
+    page.getByRole("heading", { name: "Reader Ready Course" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/Stars do not change your local Library/),
+  ).toBeVisible();
+
+  await page.goto("/packages/reader-ready-course");
+  await page.getByRole("button", { name: /Fork into Studio/ }).click();
+  await expect(page).toHaveURL(/\/studio\/[^/?#]+$/);
+  await page.getByRole("button", { name: "publish", exact: true }).click();
+  await page
+    .locator(".publish-panel")
+    .getByRole("button", { name: "Claim local draft" })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Fork lineage will be permanent" }),
+  ).toBeVisible();
+  await page.getByLabel("Package slug").fill("reader-ready-course-fork");
+  await page.getByLabel("Semantic version").fill("1.0.0");
+  await page.getByLabel("Visibility").selectOption("public");
+  await page.getByRole("button", { name: "Check slug" }).click();
+  await page.getByRole("button", { name: "Publish first version" }).click();
+  await expect(
+    page.getByText("Published reader-ready-course-fork version 1.0.0"),
+  ).toBeVisible();
+  await page.goto("/packages/reader-ready-course-fork");
+  await expect(page.getByText(/Forked from/)).toBeVisible();
+  await expect(page.getByText(/version 1\.0\.0/)).toBeVisible();
 });
