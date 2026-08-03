@@ -8,8 +8,8 @@ const masterclass = "/home/apv/mcf-authoring-masterclass.mcf.zip";
 const hasCanonicalFixtures =
   existsSync(fixture10) && existsSync(fixture11) && existsSync(masterclass);
 
-test.beforeEach((fixtures, testInfo) => {
-  void fixtures;
+test.beforeEach(({ page }, testInfo) => {
+  void page;
   if (!hasCanonicalFixtures) testInfo.skip();
 });
 
