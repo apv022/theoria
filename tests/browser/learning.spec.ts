@@ -7,7 +7,8 @@ const canonicalLearningFixtures = [
   "/home/apv/examplecourses/archives/feature-showcase.mcf.zip",
 ].every(existsSync);
 
-test.beforeEach(({}, testInfo) => {
+test.beforeEach((fixtures, testInfo) => {
+  void fixtures;
   if (!canonicalLearningFixtures && testInfo.title.includes("standalone")) {
     testInfo.skip();
   }
