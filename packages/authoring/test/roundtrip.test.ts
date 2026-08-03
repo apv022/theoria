@@ -421,7 +421,7 @@ test("source-first imports preserve every byte, asset, kind, and literal marker"
   }
 
   const masterclass = await readFile(
-    "/home/apv/mcf-authoring-masterclass.mcf.zip",
+    fixture("mcf-authoring-masterclass.mcf.zip"),
   );
   const masterclassFiles = extractSafeArchive(new Uint8Array(masterclass));
   assert.ok(
