@@ -1,9 +1,16 @@
 import { expect, test } from "@playwright/test";
 import { zipSync } from "fflate";
+import { existsSync } from "node:fs";
 
 const fixture10 = "/home/apv/mcf-samples/minimal";
 const fixture11 = "/home/apv/examplecourses/archives/minimal.mcf.zip";
 const masterclass = "/home/apv/mcf-authoring-masterclass.mcf.zip";
+const hasCanonicalFixtures =
+  existsSync(fixture10) && existsSync(fixture11) && existsSync(masterclass);
+
+test.beforeEach(({}, testInfo) => {
+  if (!hasCanonicalFixtures) testInfo.skip();
+});
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/compile");

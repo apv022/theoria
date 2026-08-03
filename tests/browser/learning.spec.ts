@@ -1,4 +1,17 @@
 import { expect, test, type Page } from "@playwright/test";
+import { existsSync } from "node:fs";
+
+const canonicalLearningFixtures = [
+  "/home/apv/examplecourses/archives/standalone-module.mcf.zip",
+  "/home/apv/examplecourses/archives/standalone-lesson.mcf.zip",
+  "/home/apv/examplecourses/archives/feature-showcase.mcf.zip",
+].every(existsSync);
+
+test.beforeEach(({}, testInfo) => {
+  if (!canonicalLearningFixtures && testInfo.title.includes("standalone")) {
+    testInfo.skip();
+  }
+});
 
 const small = "/home/apv/theoria/fixtures/local/minimal-1.1.mcf.zip";
 

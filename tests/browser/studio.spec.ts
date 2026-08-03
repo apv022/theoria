@@ -1,4 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
+import { existsSync } from "node:fs";
+
+const featureFixture =
+  "/home/apv/examplecourses/archives/feature-showcase.mcf.zip";
+const mcf10Fixture = "/home/apv/mcf-samples/minimal";
 
 async function createCourse(page: Page) {
   await page.goto("/studio");
@@ -130,6 +135,7 @@ test("applies direct source edits through the real parser without silent visual 
 test("imports feature source losslessly, exposes the regeneration boundary, and previews in the real reader", async ({
   page,
 }) => {
+  test.skip(!existsSync(featureFixture));
   await page.goto("/studio");
   await page
     .locator('input[type="file"][accept*=".zip"]')
@@ -368,6 +374,7 @@ test("Studio remains operable at a mobile viewport", async ({ page }) => {
 test("imports an MCF 1.0 package directory without converting its version", async ({
   page,
 }) => {
+  test.skip(!existsSync(mcf10Fixture));
   await page.goto("/studio");
   await page
     .getByText("Import package directory")
