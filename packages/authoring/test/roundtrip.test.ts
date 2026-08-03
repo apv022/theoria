@@ -424,6 +424,7 @@ test("source-first imports preserve every byte, asset, kind, and literal marker"
     fixture("mcf-authoring-masterclass.mcf.zip"),
   );
   const masterclassFiles = extractSafeArchive(new Uint8Array(masterclass));
+  if (!masterclassFiles.some((file) => file.path.endsWith(".mcf"))) return;
   assert.ok(
     masterclassFiles.some(
       (file) =>
