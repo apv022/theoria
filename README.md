@@ -42,7 +42,7 @@ separate explicit action.
 
 ## Requirements
 
-- Node.js 22 or newer
+- Node.js 24 or newer
 - Corepack
 - A modern browser
 
