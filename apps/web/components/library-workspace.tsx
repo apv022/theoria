@@ -1,6 +1,6 @@
 "use client";
 
-import { WorkerMcfEngine } from "@theoria/mcf-browser";
+import { extractSafeArchive, WorkerMcfEngine } from "@theoria/mcf-browser";
 import { IndexedDbLocalStore } from "@theoria/local-store";
 import {
   type LearnerProgress,
@@ -41,6 +41,9 @@ export function LibraryWorkspace() {
   const [message, setMessage] = useState<string>();
   const [error, setError] = useState<string>();
   const [corrupt, setCorrupt] = useState<Readonly<Record<string, string>>>({});
+  const [coverUrls, setCoverUrls] = useState<Readonly<Record<string, string>>>(
+    {},
+  );
 
   const refresh = useCallback(async () => {
     if (!store) {
@@ -72,6 +75,41 @@ export function LibraryWorkspace() {
           }
         }),
       );
+      const nextCovers: Record<string, string> = {};
+      await Promise.all(
+        list.map(async (entry) => {
+          try {
+            const source = await store.resolveLibrarySource(entry);
+            const result = await engine.execute({
+              type: "request",
+              requestId: crypto.randomUUID(),
+              operation: "inspect",
+              input: {
+                type: "archive",
+                name: "package.mcf.zip",
+                bytes: await source.archive.arrayBuffer(),
+              },
+            });
+            if (result.status !== "ok" || !result.summary.manifest.cover)
+              return;
+            const file = extractSafeArchive(
+              new Uint8Array(result.sourceArchive),
+            ).find(
+              (candidate) => candidate.path === result.summary.manifest.cover,
+            );
+            if (file)
+              nextCovers[entry.packageId] = URL.createObjectURL(
+                new Blob([file.bytes]),
+              );
+          } catch {
+            /* existing corruption handling remains authoritative */
+          }
+        }),
+      );
+      setCoverUrls((previous) => {
+        Object.values(previous).forEach((url) => URL.revokeObjectURL(url));
+        return nextCovers;
+      });
       setEntries(
         [...list].sort((a, b) => {
           const left = a.lastOpenedAt ?? a.addedAt;
@@ -100,6 +138,12 @@ export function LibraryWorkspace() {
     void refresh();
     return () => engine.dispose();
   }, [engine, refresh]);
+
+  useEffect(
+    () => () =>
+      Object.values(coverUrls).forEach((url) => URL.revokeObjectURL(url)),
+    [coverUrls],
+  );
 
   const importArchive = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -299,12 +343,21 @@ export function LibraryWorkspace() {
             return (
               <article className="library-card" key={entry.packageId}>
                 <div className="library-card-top">
-                  <Image
-                    src="/theoria-mark.svg"
-                    width={36}
-                    height={36}
-                    alt=""
-                  />
+                  {coverUrls[entry.packageId] ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      className="library-card-cover"
+                      src={coverUrls[entry.packageId]}
+                      alt=""
+                    />
+                  ) : (
+                    <Image
+                      src="/theoria-mark.svg"
+                      width={36}
+                      height={36}
+                      alt=""
+                    />
+                  )}
                   <Status tone={state?.completedAt ? "positive" : "neutral"}>
                     {state?.completedAt ? "Complete" : `${percentage}%`}
                   </Status>

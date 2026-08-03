@@ -1155,6 +1155,7 @@ export function StudioDraftWorkspace({
   const [previewUrl, setPreviewUrl] = useState<string>();
   const [assetBusy, setAssetBusy] = useState(false);
   const [assetMessage, setAssetMessage] = useState<string>();
+  const [coverUrl, setCoverUrl] = useState<string>();
   const validationRequest = useRef<string | undefined>(undefined);
 
   useEffect(() => {
@@ -1204,6 +1205,28 @@ export function StudioDraftWorkspace({
         });
     }, 350);
     return () => clearTimeout(timer);
+  }, [draft]);
+
+  useEffect(() => {
+    if (!draft) return;
+    const manifest = draft.sourceFiles.find(
+      (file) => file.path === "manifest.yaml",
+    );
+    const coverPath = manifest
+      ? /^cover:\s*["']?([^"'\s]+)["']?/m.exec(fileText(manifest))?.[1]
+      : undefined;
+    const cover = coverPath
+      ? draft.sourceFiles.find((file) => file.path === coverPath)
+      : undefined;
+    if (!cover || cover.kind !== "binary") {
+      setCoverUrl(undefined);
+      return;
+    }
+    const url = URL.createObjectURL(
+      new Blob([cover.bytes], { type: cover.mediaType ?? "image/png" }),
+    );
+    setCoverUrl(url);
+    return () => URL.revokeObjectURL(url);
   }, [draft]);
 
   const execute = useCallback(
@@ -1556,6 +1579,14 @@ export function StudioDraftWorkspace({
     <div className="creation-workspace">
       <aside className="draft-tree">
         <p className="section-label">Package tree</p>
+        {coverUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            className="studio-draft-cover"
+            src={coverUrl}
+            alt="Course cover"
+          />
+        ) : null}
         <strong>{draft.title}</strong>
         <p>
           {draft.kind} · MCF {draft.mcf}
