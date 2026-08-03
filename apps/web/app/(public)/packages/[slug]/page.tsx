@@ -77,8 +77,16 @@ export default async function PackagePage({ params }: Props) {
       <p className="section-label">Course repository</p>
       <div className="detail-grid">
         <div className="detail-cover">
+          {typeof manifest?.cover === "string" && latest ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={`/api/packages/${encodeURIComponent(packageValue.slug)}/versions/${encodeURIComponent(latest.version)}/cover`}
+              alt=""
+            />
+          ) : (
+            <Image src="/theoria-mark.svg" width={192} height={192} alt="" />
+          )}
           <span>{latest?.packageKind ?? "MCF"}</span>
-          <Image src="/theoria-mark.svg" width={192} height={192} alt="" />
           <small>Canonical source repository</small>
         </div>
         <article id="overview">

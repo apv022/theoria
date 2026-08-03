@@ -580,6 +580,12 @@ h3 {
   background: var(--ink);
   font: 6rem/0.7 var(--display);
 }
+.repository-card-cover {
+  width: 100%;
+  height: 8rem;
+  object-fit: cover;
+  background: var(--ink);
+}
 .repository-card-body {
   display: flex;
   flex-direction: column;
@@ -2835,6 +2841,18 @@ select,
   height: 1px;
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
+}
+.theme-icon-control {
+  width: 2.35rem;
+  height: 2.35rem;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--white);
+  color: var(--ink);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
 }
 
 .platform-mobile-menu {

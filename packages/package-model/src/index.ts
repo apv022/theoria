@@ -37,6 +37,8 @@ export interface PackageManifest {
   readonly language: string;
   readonly version: string;
   readonly description?: string;
+  /** Canonical MCF cover asset path from manifest.yaml. */
+  readonly cover?: string;
   readonly authors: readonly PackageAuthor[];
   readonly license?: string;
   readonly subjects?: readonly string[];

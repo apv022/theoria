@@ -36,11 +36,20 @@ export function RepositoryPackageCard({
   const subjects = manifestSubjects(packageValue);
   const level = manifestLevel(packageValue);
   const headingId = `package-${packageValue.id}`;
+  const cover =
+    typeof manifest.cover === "string"
+      ? `/api/packages/${encodeURIComponent(packageValue.slug)}/versions/${encodeURIComponent(latest.version)}/cover`
+      : undefined;
   return (
     <article className="repository-card" aria-labelledby={headingId}>
-      <div className="repository-card-mark" aria-hidden="true">
-        {packageValue.title.slice(0, 1).toUpperCase()}
-      </div>
+      {cover ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img className="repository-card-cover" src={cover} alt="" />
+      ) : (
+        <div className="repository-card-mark" aria-hidden="true">
+          {packageValue.title.slice(0, 1).toUpperCase()}
+        </div>
+      )}
       <div className="repository-card-body">
         <div className="repository-card-status">
           <Status>{latest.packageKind.replaceAll("_", " ")}</Status>

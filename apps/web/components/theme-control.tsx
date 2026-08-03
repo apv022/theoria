@@ -40,9 +40,25 @@ export function ThemeControl({
     return () => media.removeEventListener("change", update);
   }, []);
 
-  return (
-    <label className={`theme-control${compact ? " compact" : ""}`}>
-      <span>{compact ? "Theme" : "Appearance"}</span>
+  const dark = preference === "dark";
+  return compact ? (
+    <button
+      className="theme-icon-control"
+      type="button"
+      aria-label={`Theme: ${dark ? "switch to light mode" : "switch to dark mode"}`}
+      title={dark ? "Switch to light mode" : "Switch to dark mode"}
+      onClick={() => {
+        const next = dark ? "light" : "dark";
+        localStorage.setItem(themeStorageKey, next);
+        setPreference(next);
+        applyTheme(next);
+      }}
+    >
+      {dark ? "☀" : "☾"}
+    </button>
+  ) : (
+    <label className="theme-control">
+      <span>Appearance</span>
       <select
         aria-label="Theme"
         value={preference}
