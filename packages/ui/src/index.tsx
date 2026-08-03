@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type {
   ButtonHTMLAttributes,
   InputHTMLAttributes,
@@ -21,9 +22,14 @@ export function SkipLink({ href = "#main" }: { readonly href?: string }) {
 export function Brand({ compact = false }: { readonly compact?: boolean }) {
   return (
     <Link className="brand" href="/" aria-label="Theoria home">
-      <span className="brand-mark" aria-hidden="true">
-        Θ
-      </span>
+      <Image
+        className="brand-mark"
+        src="/theoria-mark.svg"
+        alt=""
+        width={32}
+        height={32}
+        priority
+      />
       {compact ? null : <span>Theoria</span>}
     </Link>
   );

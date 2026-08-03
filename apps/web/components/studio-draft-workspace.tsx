@@ -1677,7 +1677,11 @@ export function StudioDraftWorkspace({
         <hr />
         <nav aria-label="Draft source files">
           {draft.sourceFiles.map((file) => (
-            <button key={file.path} onClick={() => openDiagnostic(file.path)}>
+            <button
+              key={file.path}
+              title={file.path}
+              onClick={() => openDiagnostic(file.path)}
+            >
               {file.path}
             </button>
           ))}

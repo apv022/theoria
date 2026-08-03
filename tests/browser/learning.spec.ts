@@ -53,9 +53,18 @@ test("compiler output can be referenced by the library and opened in the reader"
 });
 
 test("reader controls remain usable at a mobile viewport", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 320, height: 568 });
   await importSmall(page);
   await expect(page.locator(".reader-course-nav")).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth,
+      ),
+    )
+    .toBeLessThanOrEqual(1);
   await page.getByRole("button", { name: "Mark notes complete" }).click();
   await expect(page.getByText("Lesson complete")).toBeVisible();
 });

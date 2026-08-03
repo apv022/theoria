@@ -8,6 +8,7 @@ import {
 } from "@theoria/package-model";
 import { localPackageId, toReaderStructure } from "@theoria/reader";
 import { Button, LinkButton, Notice, Status } from "@theoria/ui";
+import Image from "next/image";
 import {
   useCallback,
   useEffect,
@@ -85,11 +86,9 @@ export function LibraryWorkspace() {
       setProgress(savedProgress);
       setCorrupt(failures);
       setError(undefined);
-    } catch (reason) {
+    } catch {
       setError(
-        reason instanceof Error
-          ? `Local library could not be opened: ${reason.message}`
-          : "Local library could not be opened.",
+        "This browser’s library could not be opened. Retry, or check that site storage is allowed.",
       );
     } finally {
       setLoading(false);
@@ -191,9 +190,7 @@ export function LibraryWorkspace() {
       setError(
         quota
           ? "Browser storage quota was exceeded. Remove another local package and try again."
-          : reason instanceof Error
-            ? reason.message
-            : "The package could not be saved.",
+          : "The package could not be saved. The source file is unchanged; retry or export other local work before clearing browser storage.",
       );
     } finally {
       setBusy(false);
@@ -227,18 +224,24 @@ export function LibraryWorkspace() {
     try {
       const source = await store.resolveLibrarySource(entry);
       download(source.archive, `${entry.packageId}.mcf.zip`);
-    } catch (reason) {
+    } catch {
       setError(
-        reason instanceof Error ? reason.message : "Source export failed.",
+        "The saved package source is unavailable. Remove the damaged record or import the source again.",
       );
     }
   };
 
   const exportCompiled = async (entry: LibraryEntry) => {
     if (!store) return;
-    const source = await store.resolveLibrarySource(entry);
-    if (source.compiledArtifact)
-      download(source.compiledArtifact, `${entry.packageId}-compiled.zip`);
+    try {
+      const source = await store.resolveLibrarySource(entry);
+      if (source.compiledArtifact)
+        download(source.compiledArtifact, `${entry.packageId}-compiled.zip`);
+    } catch {
+      setError(
+        "The compiled artifact is unavailable. Recompile the source package to recover it.",
+      );
+    }
   };
 
   return (
@@ -296,7 +299,12 @@ export function LibraryWorkspace() {
             return (
               <article className="library-card" key={entry.packageId}>
                 <div className="library-card-top">
-                  <span>Θ</span>
+                  <Image
+                    src="/theoria-mark.svg"
+                    width={36}
+                    height={36}
+                    alt=""
+                  />
                   <Status tone={state?.completedAt ? "positive" : "neutral"}>
                     {state?.completedAt ? "Complete" : `${percentage}%`}
                   </Status>
@@ -314,9 +322,22 @@ export function LibraryWorkspace() {
                   <i style={{ width: `${percentage}%` }} />
                 </div>
                 {corrupt[entry.packageId] ? (
-                  <p className="corrupt-record" role="alert">
-                    {corrupt[entry.packageId]}
-                  </p>
+                  <div className="corrupt-record" role="alert">
+                    <strong>Saved package data is unavailable.</strong>
+                    <p>
+                      Import the source again, or remove this damaged record.
+                    </p>
+                    <details>
+                      <summary>Technical details</summary>
+                      <code>{corrupt[entry.packageId]}</code>
+                    </details>
+                    <Button
+                      className="button-danger"
+                      onClick={() => void remove(entry)}
+                    >
+                      Remove damaged record
+                    </Button>
+                  </div>
                 ) : (
                   <LinkButton
                     href={

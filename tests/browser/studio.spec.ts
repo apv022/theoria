@@ -9,6 +9,81 @@ async function createCourse(page: Page) {
   await expect(page.getByText("valid", { exact: true })).toBeVisible();
 }
 
+test("Studio shell controls retain contrast and full source paths remain readable", async ({
+  page,
+}) => {
+  await createCourse(page);
+  const colors = await page.locator(".studio-header").evaluate((header) => {
+    const link = header.querySelector("a");
+    return {
+      background: getComputedStyle(header).backgroundColor,
+      foreground: getComputedStyle(header).color,
+      link: link ? getComputedStyle(link).color : "",
+    };
+  });
+  expect(colors).toEqual({
+    background: "rgb(32, 35, 31)",
+    foreground: "rgb(255, 255, 255)",
+    link: "rgb(255, 255, 255)",
+  });
+  const lessonSource = page.getByRole("button", {
+    name: "chapters/introduction/lessons/welcome.mcf",
+  });
+  await expect(lessonSource).toHaveAttribute(
+    "title",
+    "chapters/introduction/lessons/welcome.mcf",
+  );
+  const pathStyles = await lessonSource.evaluate((button) => ({
+    whiteSpace: getComputedStyle(button).whiteSpace,
+    overflowWrap: getComputedStyle(button).overflowWrap,
+  }));
+  expect(pathStyles).toEqual({
+    whiteSpace: "normal",
+    overflowWrap: "anywhere",
+  });
+});
+
+test("Studio creation and primary actions fit a narrow touch viewport", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await createCourse(page);
+  await expect(page.getByRole("button", { name: "content" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Export source" }),
+  ).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth,
+      ),
+    )
+    .toBeLessThanOrEqual(1);
+});
+
+test("an opened Studio draft remains editable when the app shell is offline", async ({
+  page,
+  context,
+}) => {
+  await createCourse(page);
+  await page.evaluate(async () => navigator.serviceWorker.ready);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Welcome" })).toBeVisible();
+  await context.setOffline(true);
+  try {
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Welcome" })).toBeVisible();
+    await page.getByRole("button", { name: "metadata", exact: true }).click();
+    await expect(page.getByLabel("Title", { exact: true })).toHaveValue(
+      "Pilot Course",
+    );
+  } finally {
+    await context.setOffline(false);
+  }
+});
+
 test("creates, visually edits, autosaves, reloads, and exports a course draft", async ({
   page,
 }) => {

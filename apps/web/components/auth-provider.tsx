@@ -6,7 +6,11 @@ import type {
   PlatformClient,
 } from "@theoria/platform-client";
 import { IndexedDbLocalStore } from "@theoria/local-store";
-import { TheoriaSyncEngine } from "@theoria/sync";
+import {
+  SYNC_IDLE_INTERVAL,
+  TheoriaSyncEngine,
+  syncRetryDelay,
+} from "@theoria/sync";
 import {
   createContext,
   useContext,
@@ -78,7 +82,14 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {
     let active = true;
     let running = false;
     let rerun = false;
+    let failures = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    const engine = new TheoriaSyncEngine(localStore.sync, platform.sync);
+    const schedule = (delay = 350) => {
+      if (!active) return;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => void run(), delay);
+    };
     const run = async () => {
       if (!active) return;
       if (running) {
@@ -109,31 +120,34 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {
       }
       running = true;
       try {
-        await new TheoriaSyncEngine(localStore.sync, platform.sync).syncNow();
+        const result = await engine.syncNow();
+        failures = result.failed ? failures + 1 : 0;
+        schedule(result.failed ? syncRetryDelay(failures) : SYNC_IDLE_INTERVAL);
       } catch {
-        // The durable outbox remains available for a later bounded retry.
+        failures += 1;
+        schedule(syncRetryDelay(failures));
       } finally {
         running = false;
         if (rerun) {
           rerun = false;
-          schedule();
+          schedule(350);
         }
       }
     };
-    const schedule = () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => void run(), 500);
+    const changed = (change: Event) => {
+      const reason = (change as CustomEvent<{ reason?: string }>).detail
+        ?.reason;
+      if (reason === "mutation" || reason === "configuration") schedule();
     };
-    const retryTimer = setInterval(schedule, 2_000);
-    addEventListener("online", schedule);
-    addEventListener("theoria-sync-change", schedule);
+    const reconnected = () => schedule();
+    addEventListener("online", reconnected);
+    addEventListener("theoria-sync-change", changed);
     schedule();
     return () => {
       active = false;
       if (timer) clearTimeout(timer);
-      clearInterval(retryTimer);
-      removeEventListener("online", schedule);
-      removeEventListener("theoria-sync-change", schedule);
+      removeEventListener("online", reconnected);
+      removeEventListener("theoria-sync-change", changed);
     };
   }, [event, identity, platform]);
 

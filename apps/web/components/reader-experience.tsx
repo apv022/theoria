@@ -30,6 +30,7 @@ import {
   type ReaderStructure,
 } from "@theoria/reader";
 import { Button, Status } from "@theoria/ui";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -895,7 +896,7 @@ export function ReaderExperience({
   if (status.state === "loading") {
     return (
       <div className="reader-loading" aria-busy="true">
-        <span>Θ</span>
+        <Image src="/theoria-mark.svg" width={64} height={64} alt="" />
         <h1>Opening your local package…</h1>
       </div>
     );

@@ -23,6 +23,14 @@ import type {
 } from "@theoria/platform-client";
 
 export const SYNC_ARTIFACT_LIMIT = 25 * 1024 * 1024;
+export const SYNC_IDLE_INTERVAL = 60_000;
+
+export const syncRetryDelay = (
+  failureCount: number,
+  baseDelay = 1_000,
+  maximumDelay = SYNC_IDLE_INTERVAL,
+): number =>
+  Math.min(maximumDelay, baseDelay * 2 ** Math.max(0, failureCount - 1));
 
 export type SyncOnboardingChoice =
   | "merge"
@@ -68,6 +76,14 @@ type EncodedValue = {
   readonly payload: Readonly<Record<string, unknown>>;
   readonly artifactStatus: LocalSyncRecord["artifactStatus"];
 };
+
+type SyncRunOptions = {
+  readonly signal?: AbortSignal;
+  readonly onProgress?: (progress: SyncProgress) => void;
+  readonly startCursor?: number;
+};
+
+const activeRuns = new WeakMap<SyncClient, Promise<SyncRunResult>>();
 
 const abortIfNeeded = (signal?: AbortSignal): void => {
   if (signal?.aborted)
@@ -378,13 +394,21 @@ export class TheoriaSyncEngine {
     }
   }
 
-  async syncNow(
-    options: {
-      readonly signal?: AbortSignal;
-      readonly onProgress?: (progress: SyncProgress) => void;
-      readonly startCursor?: number;
-    } = {},
-  ): Promise<SyncRunResult> {
+  async syncNow(options: SyncRunOptions = {}): Promise<SyncRunResult> {
+    const existing = activeRuns.get(this.remote);
+    if (existing) return existing;
+    const running = this.performSync(options);
+    activeRuns.set(this.remote, running);
+    try {
+      return await running;
+    } finally {
+      if (activeRuns.get(this.remote) === running) {
+        activeRuns.delete(this.remote);
+      }
+    }
+  }
+
+  private async performSync(options: SyncRunOptions): Promise<SyncRunResult> {
     const settings = await this.local.settings();
     if (!settings.enabled || !settings.userId)
       throw new Error("Synchronization is not enabled on this device.");

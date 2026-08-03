@@ -1,4 +1,5 @@
 import { Notice, Status } from "@theoria/ui";
+import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { serverPlatformClient } from "../../../../lib/platform/server";
@@ -54,7 +55,7 @@ export default async function PackagePage({ params }: Props) {
       <div className="detail-grid">
         <div className="detail-cover">
           <span>{latest?.packageKind ?? "MCF"}</span>
-          <strong>Θ</strong>
+          <Image src="/theoria-mark.svg" width={192} height={192} alt="" />
           <small>Canonical source repository</small>
         </div>
         <article>

@@ -375,7 +375,7 @@ export class IndexedDbLocalStore implements LocalStore {
     const current = await this.syncSettings();
     const next = { ...current, ...update };
     await this.syncPut("syncSettings", next);
-    this.notifySync();
+    this.notifySync("configuration");
     return next;
   }
 
@@ -445,7 +445,7 @@ export class IndexedDbLocalStore implements LocalStore {
       };
       await this.syncPut("syncOutbox", operation);
     }
-    this.notifySync();
+    this.notifySync("mutation");
   }
 
   private async commitLocalMutation(
@@ -511,7 +511,7 @@ export class IndexedDbLocalStore implements LocalStore {
       } satisfies LocalSyncOutboxOperation);
     }
     await transactionDone(transaction);
-    this.notifySync();
+    this.notifySync("mutation");
   }
 
   private async markDirty(
@@ -539,7 +539,7 @@ export class IndexedDbLocalStore implements LocalStore {
       lastError: undefined,
     });
     await this.syncDelete("syncOutbox", id);
-    this.notifySync();
+    this.notifySync("state");
   }
 
   private async setRemoteRevision(
@@ -595,7 +595,7 @@ export class IndexedDbLocalStore implements LocalStore {
     } satisfies LocalSyncRecord);
     transaction.objectStore("syncOutbox").delete(`${category}:${stableId}`);
     await transactionDone(transaction);
-    this.notifySync();
+    this.notifySync("state");
   }
 
   private async failOutbox(
@@ -614,7 +614,7 @@ export class IndexedDbLocalStore implements LocalStore {
     );
     if (record)
       await this.syncPut("syncRecords", { ...record, lastError: message });
-    this.notifySync();
+    this.notifySync("state");
   }
 
   private async valueFor(
@@ -691,9 +691,13 @@ export class IndexedDbLocalStore implements LocalStore {
     await transactionDone(transaction);
   }
 
-  private notifySync(): void {
-    if (typeof dispatchEvent !== "undefined")
-      dispatchEvent(new Event("theoria-sync-change"));
+  private notifySync(reason: "configuration" | "mutation" | "state"): void {
+    if (typeof dispatchEvent === "undefined") return;
+    dispatchEvent(
+      typeof CustomEvent === "undefined"
+        ? new Event("theoria-sync-change")
+        : new CustomEvent("theoria-sync-change", { detail: { reason } }),
+    );
   }
 
   async resolveLibrarySource(

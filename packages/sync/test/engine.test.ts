@@ -18,8 +18,10 @@ import type {
 } from "@theoria/platform-client";
 import {
   SYNC_ARTIFACT_LIMIT,
+  SYNC_IDLE_INTERVAL,
   TheoriaSyncEngine,
   mergeProgress,
+  syncRetryDelay,
 } from "../src/index";
 
 class FakeRemote implements SyncClient {
@@ -27,6 +29,7 @@ class FakeRemote implements SyncClient {
   readonly blobs = new Map<string, Blob>();
   applies = 0;
   uploads = 0;
+  listCalls = 0;
   cursor = 0;
   failApply = false;
 
@@ -52,6 +55,7 @@ class FakeRemote implements SyncClient {
   }
 
   async list(cursor: number, limit = 100): Promise<RemoteSyncPage> {
+    this.listCalls += 1;
     const rows = [...this.records.values()]
       .filter((record) => record.cursor > cursor)
       .sort((left, right) => left.cursor - right.cursor)
@@ -115,6 +119,14 @@ class FakeRemote implements SyncClient {
   }
 }
 
+test("automatic retry delay backs off and remains bounded", () => {
+  assert.deepEqual(
+    [1, 2, 3, 4, 8].map((attempt) => syncRetryDelay(attempt, 250, 2_000)),
+    [250, 500, 1_000, 2_000, 2_000],
+  );
+  assert.equal(syncRetryDelay(99), SYNC_IDLE_INTERVAL);
+});
+
 const draft = (
   id: string,
   checksum: string,
@@ -150,6 +162,19 @@ const draft = (
 
 const store = (name: string): IndexedDbLocalStore =>
   new IndexedDbLocalStore(name, new IDBFactory());
+
+test("overlapping synchronization runs share one remote operation", async () => {
+  const local = store("overlap");
+  const remote = new FakeRemote();
+  const engine = new TheoriaSyncEngine(local.sync, remote);
+  await local.sync.configure({ enabled: true, userId: "user-1" });
+  const [first, second] = await Promise.all([
+    engine.syncNow(),
+    engine.syncNow(),
+  ]);
+  assert.deepEqual(first, second);
+  assert.equal(remote.listCalls, 1);
+});
 
 test("planning is read-only and explicit consent uploads owned local data", async () => {
   const local = store("consent");
