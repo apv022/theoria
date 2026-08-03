@@ -335,9 +335,7 @@ test("visual metadata generation round-trips without phantom content", async () 
   const changed = updatePackageMetadata(original.package, {
     title: "Edited feature showcase",
   });
-  const archive = await readFile(
-    fixture("minimal-1.1.mcf.zip"),
-  );
+  const archive = await readFile(fixture("minimal-1.1.mcf.zip"));
   const assets = extractSafeArchive(new Uint8Array(archive))
     .filter(
       (file) =>
