@@ -30,6 +30,7 @@ import {
   type ReaderStructure,
 } from "@theoria/reader";
 import { Button, Status } from "@theoria/ui";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -707,9 +708,11 @@ type ReaderStatus =
 export function ReaderExperience({
   packageId,
   lessonId,
+  mode = "reader",
 }: {
   readonly packageId: string;
   readonly lessonId?: string;
+  readonly mode?: "reader" | "preview";
 }) {
   const router = useRouter();
   const engine = useMemo(() => new WorkerMcfEngine(), []);
@@ -827,8 +830,9 @@ export function ReaderExperience({
         resolveAsset: assets.resolve,
       });
       if (!lessonId) {
+        const base = mode === "preview" ? "/preview" : "/read";
         router.replace(
-          `/read/${encodeURIComponent(packageId)}/${encodeURIComponent(requested)}`,
+          `${base}/${encodeURIComponent(packageId)}/${encodeURIComponent(requested)}`,
         );
       }
     };
@@ -847,7 +851,7 @@ export function ReaderExperience({
       revoke();
       engine.dispose();
     };
-  }, [engine, lessonId, packageId, router]);
+  }, [engine, lessonId, mode, packageId, router]);
 
   const commit = useCallback(
     (next: LearnerProgress) => {
@@ -863,6 +867,7 @@ export function ReaderExperience({
   useEffect(() => {
     if (
       !offlineCourse ||
+      mode === "preview" ||
       !("serviceWorker" in navigator) ||
       process.env.NODE_ENV !== "production"
     )
@@ -874,7 +879,7 @@ export function ReaderExperience({
     void navigator.serviceWorker.ready.then((registration) => {
       registration.active?.postMessage({ type: "CACHE_URLS", urls });
     });
-  }, [offlineCourse, packageId]);
+  }, [mode, offlineCourse, packageId]);
 
   useEffect(() => {
     if (status.state !== "ready") return;
@@ -891,7 +896,7 @@ export function ReaderExperience({
   if (status.state === "loading") {
     return (
       <div className="reader-loading" aria-busy="true">
-        <span>Θ</span>
+        <Image src="/theoria-mark.svg" width={64} height={64} alt="" />
         <h1>Opening your local package…</h1>
       </div>
     );
@@ -901,9 +906,15 @@ export function ReaderExperience({
       <div className="reader-error" role="alert">
         <h1>Reader unavailable</h1>
         <p>{status.message}</p>
-        <Link className="button" href="/library">
-          Return to library
-        </Link>
+        {mode === "reader" ? (
+          <Link className="button" href="/library">
+            Return to library
+          </Link>
+        ) : (
+          <p>
+            Return to Studio and rebuild the preview after fixing the draft.
+          </p>
+        )}
       </div>
     );
   }
@@ -914,6 +925,9 @@ export function ReaderExperience({
     lessons[0]!;
   const index = lessons.findIndex((lesson) => lesson.id === current.id);
   const percentage = coursePercent(status.course, status.progress);
+  const readerBase = mode === "preview" ? "/preview" : "/read";
+  const lessonHref = (id: string) =>
+    `${readerBase}/${encodeURIComponent(packageId)}/${encodeURIComponent(id)}`;
   return (
     <div className="active-reader">
       <aside className="reader-course-nav">
@@ -929,16 +943,18 @@ export function ReaderExperience({
             <i style={{ width: `${percentage}%` }} />
           </div>
           <strong>{percentage}% complete</strong>
-          <SyncStatus category="progress" stableId={packageId} />
+          {mode === "reader" ? (
+            <SyncStatus category="progress" stableId={packageId} />
+          ) : null}
         </div>
         <nav aria-label="Package contents">
           {status.course.chapters.map((chapter) => (
             <section key={chapter.id}>
               <h2>{chapter.title}</h2>
               {chapter.lessons.map((lesson) => (
-                <a
+                <Link
                   key={lesson.id}
-                  href={`/read/${encodeURIComponent(packageId)}/${encodeURIComponent(lesson.id)}`}
+                  href={lessonHref(lesson.id)}
                   aria-current={lesson.id === current.id ? "page" : undefined}
                   className={
                     status.progress.lessons[lesson.id] ? "complete" : ""
@@ -952,7 +968,7 @@ export function ReaderExperience({
                         : "·"}
                   </span>
                   {lesson.title}
-                </a>
+                </Link>
               ))}
             </section>
           ))}
@@ -982,26 +998,25 @@ export function ReaderExperience({
         ))}
         <nav className="reader-lesson-nav" aria-label="Lesson navigation">
           {lessons[index - 1] ? (
-            <a
+            <Link
               className="button button-secondary"
-              href={`/read/${encodeURIComponent(packageId)}/${encodeURIComponent(lessons[index - 1]!.id)}`}
+              href={lessonHref(lessons[index - 1]!.id)}
             >
               ← {lessons[index - 1]!.title}
-            </a>
+            </Link>
           ) : (
             <span />
           )}
           {lessons[index + 1] ? (
-            <a
-              className="button"
-              href={`/read/${encodeURIComponent(packageId)}/${encodeURIComponent(lessons[index + 1]!.id)}`}
-            >
+            <Link className="button" href={lessonHref(lessons[index + 1]!.id)}>
               {lessons[index + 1]!.title} →
-            </a>
-          ) : (
+            </Link>
+          ) : mode === "reader" ? (
             <Link className="button" href="/library">
               Return to library
             </Link>
+          ) : (
+            <span className="preview-complete">End of preview</span>
           )}
         </nav>
       </article>

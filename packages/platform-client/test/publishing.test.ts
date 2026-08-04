@@ -49,7 +49,15 @@ class FakePublishingSupabase {
   user: User | null = { id: ownerId } as User;
   failNextUpload = false;
   readonly objects = new Map<string, Blob>();
-  readonly releases = new Map<string, string>();
+  readonly releases = new Map<
+    string,
+    {
+      readonly slug: string;
+      readonly checksum: string;
+      readonly versionId: string;
+      readonly publishedAt: string;
+    }
+  >();
   readonly removed: string[] = [];
 
   readonly auth = {
@@ -81,7 +89,9 @@ class FakePublishingSupabase {
   async rpc(name: string, args: Record<string, unknown>) {
     if (name === "package_slug_available")
       return {
-        data: ![...this.releases.values()].includes(String(args.candidate)),
+        data: ![...this.releases.values()].some(
+          (release) => release.slug === String(args.candidate),
+        ),
         error: null,
       };
     if (name === "package_version_available") {
@@ -89,17 +99,39 @@ class FakePublishingSupabase {
       return { data: !this.releases.has(key), error: null };
     }
     const key = `${String(args.requested_package_id)}:${String(args.requested_version)}`;
-    if (this.releases.has(key))
-      return { data: null, error: new Error("23505 version already exists") };
-    this.releases.set(key, String(args.requested_slug));
+    const existing = this.releases.get(key);
+    if (existing) {
+      if (existing.checksum !== String(args.requested_source_checksum))
+        return { data: null, error: new Error("23505 version already exists") };
+      return {
+        data: [
+          {
+            package_id: String(args.requested_package_id),
+            version_id: existing.versionId,
+            slug: existing.slug,
+            version: String(args.requested_version),
+            published_at: existing.publishedAt,
+          },
+        ],
+        error: null,
+      };
+    }
+    const versionId = crypto.randomUUID();
+    const publishedAt = "2026-07-30T00:00:00.000Z";
+    this.releases.set(key, {
+      slug: String(args.requested_slug),
+      checksum: String(args.requested_source_checksum),
+      versionId,
+      publishedAt,
+    });
     return {
       data: [
         {
           package_id: String(args.requested_package_id),
-          version_id: crypto.randomUUID(),
+          version_id: versionId,
           slug: String(args.requested_slug),
           version: String(args.requested_version),
-          published_at: "2026-07-30T00:00:00.000Z",
+          published_at: publishedAt,
         },
       ],
       error: null,
@@ -167,7 +199,7 @@ test("rejects validation errors and checksum mismatch before upload", async () =
   assert.equal(fake.objects.size, 0);
 });
 
-test("upload failures are retryable and duplicate versions are rejected", async () => {
+test("upload failures are retryable and exact submissions are idempotent", async () => {
   const fake = new FakePublishingSupabase();
   fake.failNextUpload = true;
   const client = platform(fake);
@@ -181,19 +213,15 @@ test("upload failures are retryable and duplicate versions are rejected", async 
   const published = await client.publishing.publish(request());
   assert.equal(published.version, "1.0.0");
   const objectCount = fake.objects.size;
-  await assert.rejects(
-    client.publishing.publish(
-      request({
-        packageId: published.packageId,
-        archive: new Blob(["canonical MCF source"], {
-          type: "application/zip",
-        }),
+  const retry = await client.publishing.publish(
+    request({
+      packageId: published.packageId,
+      archive: new Blob(["canonical MCF source"], {
+        type: "application/zip",
       }),
-    ),
-    (reason: unknown) =>
-      reason instanceof PlatformOperationError &&
-      reason.code === "VERSION_CONFLICT",
+    }),
   );
+  assert.equal(retry.versionId, published.versionId);
   assert.equal(fake.objects.size, objectCount);
 });
 

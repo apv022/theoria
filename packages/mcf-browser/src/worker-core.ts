@@ -80,6 +80,7 @@ const learningOutcomes = (
 };
 
 export function packageManifestFromMcf(value: McfPackage): PackageManifest {
+  const raw = value as unknown as Record<string, unknown>;
   const subjects = stringList(value.subjects);
   const keywords = stringList(value.keywords);
   const level = packageLevel(value.level);
@@ -94,6 +95,7 @@ export function packageManifestFromMcf(value: McfPackage): PackageManifest {
     ...(value.description === undefined
       ? {}
       : { description: value.description }),
+    ...(typeof raw.cover === "string" ? { cover: raw.cover } : {}),
     authors: (value.authors ?? []).map((name) => ({ name })),
     ...(value.license === undefined ? {} : { license: value.license }),
     ...(subjects ? { subjects } : {}),

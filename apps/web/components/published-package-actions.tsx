@@ -1,11 +1,19 @@
 "use client";
 
+import { draftFromResult } from "@theoria/authoring";
 import { WorkerMcfEngine } from "@theoria/mcf-browser";
 import { IndexedDbLocalStore } from "@theoria/local-store";
-import { packageId, type LearnerProgress } from "@theoria/package-model";
+import {
+  packageId,
+  type LearnerProgress,
+  type PackageDraft,
+} from "@theoria/package-model";
+import type { RepositoryNetwork } from "@theoria/platform-client";
 import { localPackageId, toReaderStructure } from "@theoria/reader";
 import { Button, LinkButton, Notice } from "@theoria/ui";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "./auth-provider";
 
 const store =
   typeof indexedDB === "undefined" ? undefined : new IndexedDbLocalStore();
@@ -16,13 +24,25 @@ export function PublishedPackageActions({
   manifestId,
   manifestVersion,
   sourceChecksum,
+  remotePackageId,
+  remoteVersionId,
+  title,
+  creatorHandle,
+  initialNetwork,
 }: {
   readonly slug: string;
   readonly version: string;
   readonly manifestId: string;
   readonly manifestVersion: string;
   readonly sourceChecksum: string;
+  readonly remotePackageId: string;
+  readonly remoteVersionId: string;
+  readonly title: string;
+  readonly creatorHandle: string;
+  readonly initialNetwork: RepositoryNetwork;
 }) {
+  const router = useRouter();
+  const { identity, platform } = useAuth();
   const engine = useMemo(() => new WorkerMcfEngine(), []);
   const localId = localPackageId(
     packageId(manifestId),
@@ -36,6 +56,9 @@ export function PublishedPackageActions({
   const [progress, setProgress] = useState<LearnerProgress>();
   const [message, setMessage] = useState<string>();
   const [error, setError] = useState<string>();
+  const [starred, setStarred] = useState(initialNetwork.viewerStarred);
+  const [starCount, setStarCount] = useState(initialNetwork.starCount);
+  const [starBusy, setStarBusy] = useState(false);
   const sourceUrl = `/api/packages/${encodeURIComponent(slug)}/versions/${encodeURIComponent(version)}/source`;
 
   useEffect(() => {
@@ -72,6 +95,45 @@ export function PublishedPackageActions({
     return () => engine.dispose();
   }, [engine, localId, manifestId]);
 
+  const validatedSource = async () => {
+    const response = await fetch(sourceUrl);
+    if (!response.ok)
+      throw new Error("Source download is unavailable for this account.");
+    const archive = await response.blob();
+    setMessage("Validating source in the real browser engine…");
+    const ready = await engine.initialize();
+    if (ready.status !== "ready")
+      throw new Error("The browser MCF engine is unavailable.");
+    const result = await engine.execute({
+      type: "request",
+      requestId: crypto.randomUUID(),
+      operation: "validate",
+      input: {
+        type: "archive",
+        name: `${slug}-${version}.mcf.zip`,
+        bytes: await archive.arrayBuffer(),
+      },
+    });
+    if (result.status !== "ok")
+      throw new Error(
+        result.status === "error"
+          ? result.diagnostics.map((item) => item.message).join(" ")
+          : result.status === "unsupported"
+            ? result.reason
+            : "Validation was cancelled.",
+      );
+    const manifest = result.summary.manifest;
+    if (
+      String(manifest.id) !== manifestId ||
+      manifest.version !== manifestVersion ||
+      result.summary.sourceChecksum !== sourceChecksum
+    )
+      throw new Error(
+        "The downloaded source does not match this repository version.",
+      );
+    return result;
+  };
+
   const addToLibrary = () => {
     if (!store) {
       setError("IndexedDB is unavailable in this browser.");
@@ -81,45 +143,12 @@ export function PublishedPackageActions({
     setError(undefined);
     setMessage("Downloading canonical source…");
     void (async () => {
-      const response = await fetch(sourceUrl);
-      if (!response.ok)
-        throw new Error("Source download is unavailable for this account.");
-      const archive = await response.blob();
-      setMessage("Validating source in the real browser engine…");
-      const ready = await engine.initialize();
-      if (ready.status !== "ready")
-        throw new Error("The browser MCF engine is unavailable.");
-      const result = await engine.execute({
-        type: "request",
-        requestId: crypto.randomUUID(),
-        operation: "validate",
-        input: {
-          type: "archive",
-          name: `${slug}-${version}.mcf.zip`,
-          bytes: await archive.arrayBuffer(),
-        },
-      });
-      if (result.status !== "ok")
-        throw new Error(
-          result.status === "error"
-            ? result.diagnostics.map((item) => item.message).join(" ")
-            : result.status === "unsupported"
-              ? result.reason
-              : "Validation was cancelled.",
-        );
+      const result = await validatedSource();
       if (!toReaderStructure(result.readerPackage))
         throw new Error(
           `${result.summary.manifest.kind} packages cannot open in the learner.`,
         );
       const manifest = result.summary.manifest;
-      if (
-        String(manifest.id) !== manifestId ||
-        manifest.version !== manifestVersion ||
-        result.summary.sourceChecksum !== sourceChecksum
-      )
-        throw new Error(
-          "The downloaded source does not match this repository version.",
-        );
       const at = new Date().toISOString();
       await store.packages.put({
         id: localId,
@@ -155,15 +184,125 @@ export function PublishedPackageActions({
       .finally(() => setBusy(false));
   };
 
+  const openInStudio = (fork: boolean) => {
+    if (!store) {
+      setError("IndexedDB is unavailable in this browser.");
+      return;
+    }
+    setBusy(true);
+    setError(undefined);
+    setMessage(
+      fork
+        ? "Creating an independent local fork…"
+        : "Creating an editable local copy…",
+    );
+    void (async () => {
+      const result = await validatedSource();
+      const imported = draftFromResult(result, {
+        imported: true,
+        filename: `${slug}-${version}.mcf.zip`,
+      });
+      const draft: PackageDraft = fork
+        ? {
+            ...imported,
+            origin: {
+              packageId: remotePackageId,
+              versionId: remoteVersionId,
+              slug,
+              version,
+              title,
+              creatorHandle,
+              copiedAt: new Date().toISOString(),
+            },
+          }
+        : imported;
+      await store.drafts.put(draft);
+      router.push(`/studio/${encodeURIComponent(draft.id)}`);
+    })()
+      .catch((reason) =>
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : "The editable copy could not be created.",
+        ),
+      )
+      .finally(() => setBusy(false));
+  };
+
+  const toggleStar = () => {
+    if (!identity) {
+      router.push(`/login?next=${encodeURIComponent(location.pathname)}`);
+      return;
+    }
+    const previousStarred = starred;
+    const previousCount = starCount;
+    const next = !starred;
+    setStarred(next);
+    setStarCount(Math.max(0, starCount + (next ? 1 : -1)));
+    setStarBusy(true);
+    setError(undefined);
+    void platform.repository
+      .setStar(remotePackageId, next)
+      .then((result) => {
+        setStarred(result.starred);
+        setStarCount(result.starCount);
+      })
+      .catch(() => {
+        setStarred(previousStarred);
+        setStarCount(previousCount);
+        setError(
+          "The star could not be updated. Your previous state was restored.",
+        );
+      })
+      .finally(() => setStarBusy(false));
+  };
+
   const readerHref = progress?.currentLessonId
     ? `/read/${encodeURIComponent(localId)}/${encodeURIComponent(progress.currentLessonId)}`
     : `/read/${encodeURIComponent(localId)}`;
 
   return (
     <div className="published-actions">
-      <a className="button button-secondary" href={sourceUrl}>
-        Download canonical source
-      </a>
+      <div className="actions repository-action-row">
+        <Button
+          className="button-secondary"
+          disabled={starBusy}
+          aria-pressed={starred}
+          aria-label={`${starred ? "Remove star from" : "Star"} ${title}. ${starCount} stars`}
+          onClick={toggleStar}
+        >
+          {starBusy ? "Updating…" : starred ? "★ Starred" : "☆ Star"} ·{" "}
+          {starCount}
+        </Button>
+        <Button
+          className="button-secondary"
+          disabled={busy}
+          onClick={() => openInStudio(false)}
+        >
+          {busy ? "Preparing…" : "Open in Studio"}
+        </Button>
+        <Button disabled={busy} onClick={() => openInStudio(true)}>
+          {busy
+            ? "Preparing…"
+            : `Fork into Studio · ${initialNetwork.forkCount}`}
+        </Button>
+      </div>
+      <div className="actions repository-download-row">
+        <a
+          className="button button-secondary"
+          href={sourceUrl}
+          download={`${slug}-${version}.mcf.zip`}
+        >
+          Download package
+        </a>
+        <a
+          className="button button-secondary"
+          href={sourceUrl}
+          download={`${slug}-${version}-source.mcf.zip`}
+        >
+          Download source
+        </a>
+      </div>
       {added ? (
         <>
           <LinkButton href={readerHref}>

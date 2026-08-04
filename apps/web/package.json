@@ -17,6 +17,7 @@
     "@theoria/reader": "workspace:*",
     "@theoria/sync": "workspace:*",
     "@theoria/ui": "workspace:*",
+    "katex": "0.16.22",
     "next": "16.2.11",
     "react": "19.1.1",
     "react-dom": "19.1.1"

@@ -1,6 +1,6 @@
-import { Brand, Navigation, SkipLink, Status } from "@theoria/ui";
+import { SkipLink } from "@theoria/ui";
 import type { ReactNode } from "react";
-import { AccountNavigation } from "../../components/account-navigation";
+import { PlatformHeader } from "../../components/platform-header";
 
 export default function StudioLayout({
   children,
@@ -10,16 +10,7 @@ export default function StudioLayout({
   return (
     <div className="studio-shell">
       <SkipLink />
-      <header className="studio-header">
-        <Brand />
-        <strong>Studio</strong>
-        <Navigation
-          items={[{ href: "/", label: "Exit workspace" }]}
-          label="Studio"
-        />
-        <Status>Local draft</Status>
-        <AccountNavigation showSearch={false} />
-      </header>
+      <PlatformHeader className="studio-header" workspace="Studio" />
       <main id="main">{children}</main>
     </div>
   );

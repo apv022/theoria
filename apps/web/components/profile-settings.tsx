@@ -40,6 +40,8 @@ export function ProfileSettings() {
         displayName: String(data.get("displayName") ?? ""),
         bio: String(data.get("bio") ?? ""),
         avatarPath: String(data.get("avatarPath") ?? "") || null,
+        location: String(data.get("location") ?? ""),
+        websiteUrl: String(data.get("websiteUrl") ?? ""),
       })
       .then(async (profile) => {
         await reload();
@@ -83,6 +85,21 @@ export function ProfileSettings() {
         />
         <small>Up to 500 characters. This appears publicly.</small>
       </label>
+      <Field
+        label="Location"
+        name="location"
+        defaultValue={identity.profile.location ?? ""}
+        maxLength={100}
+        hint="Optional public location."
+      />
+      <Field
+        label="Website"
+        name="websiteUrl"
+        type="url"
+        defaultValue={identity.profile.websiteUrl ?? ""}
+        maxLength={500}
+        hint="Optional public https:// or http:// URL."
+      />
       <Field
         label="Avatar path"
         name="avatarPath"

@@ -6,6 +6,7 @@ import type { PackageDraft } from "@theoria/package-model";
 import {
   PlatformOperationError,
   type AccountIdentity,
+  type PublishedPackage,
   type PublishingResult,
 } from "@theoria/platform-client";
 import { Button, LinkButton, Notice, Status } from "@theoria/ui";
@@ -40,6 +41,15 @@ export function StudioPublishingPanel({
     | Record<string, unknown>
     | undefined;
   const fixedSlug = draft.publication?.slug;
+  const [repositoryId] = useState(
+    () => draft.publication?.remotePackageId ?? crypto.randomUUID(),
+  );
+  const [ownedRepositories, setOwnedRepositories] = useState<
+    readonly PublishedPackage[]
+  >([]);
+  const [repositoryChoice, setRepositoryChoice] = useState(
+    draft.publication?.remotePackageId ?? "new",
+  );
   const [packageSlug, setPackageSlug] = useState(
     fixedSlug ?? slug(draft.title),
   );
@@ -65,12 +75,30 @@ export function StudioPublishingPanel({
     setAvailable(fixedSlug ? true : undefined);
   }, [fixedSlug, packageSlug]);
 
+  useEffect(() => {
+    if (!identity || draft.origin) return;
+    void platform.repository
+      .listOwned()
+      .then((repositories) => {
+        setOwnedRepositories(repositories);
+        const published = repositories.find(
+          (repository) => repository.id === draft.publication?.remotePackageId,
+        );
+        if (published) setVisibility(published.visibility);
+      })
+      .catch(() => setOwnedRepositories([]));
+  }, [draft.origin, draft.publication, identity, platform]);
+
+  const selectedRepository = ownedRepositories.find(
+    (item) => item.id === repositoryChoice,
+  );
+
   const checkSlug = async () => {
     setError(undefined);
     try {
       const result = await platform.publishing.slugAvailable(
         packageSlug,
-        draft.publication?.remotePackageId,
+        draft.publication?.remotePackageId ?? selectedRepository?.id,
       );
       setAvailable(result);
       if (!result) setError("That package slug is already in use.");
@@ -114,6 +142,14 @@ export function StudioPublishingPanel({
         {
           ...(draft.publication
             ? { packageId: draft.publication.remotePackageId }
+            : selectedRepository
+              ? { packageId: selectedRepository.id }
+              : { repositoryId }),
+          ...(draft.origin
+            ? {
+                parentPackageId: draft.origin.packageId,
+                parentVersionId: draft.origin.versionId,
+              }
             : {}),
           slug: packageSlug,
           title: validation.summary.manifest.title,
@@ -138,7 +174,15 @@ export function StudioPublishingPanel({
         {
           signal: abortController.signal,
           onProgress: (nextPhase, nextPercentage) => {
-            setPhase(nextPhase);
+            setPhase(
+              nextPhase === "checking"
+                ? "Packaging validated source"
+                : nextPhase === "uploading"
+                  ? "Uploading immutable package"
+                  : nextPhase === "finalizing"
+                    ? "Finalizing repository version"
+                    : "Published",
+            );
             setPercentage(nextPercentage);
           },
         },
@@ -218,12 +262,57 @@ export function StudioPublishingPanel({
         be edited or replaced after publication. Your local draft remains
         independent and editable.
       </Notice>
+      {draft.origin ? (
+        <Notice title="Fork lineage will be permanent">
+          Publishing creates a new repository forked from @
+          {draft.origin.creatorHandle}/{draft.origin.slug} at version{" "}
+          {draft.origin.version}. The exact parent release cannot later be
+          removed or changed.
+        </Notice>
+      ) : null}
+      {!draft.publication && !draft.origin ? (
+        <label className="field">
+          <span>Destination repository</span>
+          <select
+            value={repositoryChoice}
+            disabled={busy}
+            onChange={(event) => {
+              const choice = event.target.value;
+              setRepositoryChoice(choice);
+              const repository = ownedRepositories.find(
+                (item) => item.id === choice,
+              );
+              if (repository) {
+                setPackageSlug(repository.slug);
+                setVisibility(repository.visibility);
+                const latest = repository.versions[0];
+                if (latest) setVersion(nextPatch(latest.version));
+                setAvailable(true);
+              } else {
+                setPackageSlug(slug(draft.title));
+                setAvailable(undefined);
+              }
+            }}
+          >
+            <option value="new">Create a new repository</option>
+            {ownedRepositories.map((repository) => (
+              <option key={repository.id} value={repository.id}>
+                Add a version to {repository.title}
+              </option>
+            ))}
+          </select>
+          <small>
+            Every listed destination belongs exclusively to @
+            {identity.profile.handle}.
+          </small>
+        </label>
+      ) : null}
       <div className="form-columns">
         <label className="field">
           <span>Package slug</span>
           <input
             value={packageSlug}
-            readOnly={Boolean(fixedSlug)}
+            readOnly={Boolean(fixedSlug || selectedRepository)}
             minLength={3}
             maxLength={63}
             pattern="[a-z][a-z0-9-]{2,62}"
@@ -234,7 +323,7 @@ export function StudioPublishingPanel({
             required
           />
           <small>
-            {fixedSlug
+            {fixedSlug || selectedRepository
               ? "Stable after the first publication."
               : "Lowercase letters, numbers, and hyphens."}
           </small>
@@ -268,7 +357,7 @@ export function StudioPublishingPanel({
         <Button
           type="button"
           className="button-secondary"
-          disabled={busy || Boolean(fixedSlug)}
+          disabled={busy || Boolean(fixedSlug || selectedRepository)}
           onClick={() => void checkSlug()}
         >
           Check slug

@@ -66,6 +66,34 @@ class FakeRepositorySupabase {
         ],
         error: null,
       };
+    if (name === "repository_package_network")
+      return {
+        data: [
+          {
+            star_count: 4,
+            fork_count: 1,
+            viewer_starred: false,
+            parent_slug: "source-course",
+            parent_title: "Source course",
+            parent_version: "1.2.0",
+            parent_creator_handle: "source_author",
+            direct_forks: [
+              {
+                slug: "child-course",
+                title: "Child course",
+                creatorHandle: "child_author",
+                createdAt: "2026-08-02T00:00:00.000Z",
+              },
+            ],
+          },
+        ],
+        error: null,
+      };
+    if (name === "set_package_star")
+      return {
+        data: [{ starred: args.requested_starred, star_count: 5 }],
+        error: null,
+      };
     return {
       data: [
         row(
@@ -145,4 +173,20 @@ test("recent, creator, and subject operations stay bounded and typed", async () 
   );
   assert.equal(fake.calls[1]?.args.requested_offset, 12);
   assert.equal(fake.calls[2]?.args.requested_limit, 24);
+});
+
+test("repository networks and idempotent star state remain typed", async () => {
+  const fake = new FakeRepositorySupabase();
+  const client = platform(fake).repository;
+  const network = await client.getNetwork(
+    "aaaaaaaa-0000-4000-8000-000000000001",
+  );
+  assert.equal(network.starCount, 4);
+  assert.equal(network.forkCount, 1);
+  assert.equal(network.parent?.version, "1.2.0");
+  assert.equal(network.directForks[0]?.creatorHandle, "child_author");
+  assert.deepEqual(
+    await client.setStar("aaaaaaaa-0000-4000-8000-000000000001", true),
+    { starred: true, starCount: 5 },
+  );
 });

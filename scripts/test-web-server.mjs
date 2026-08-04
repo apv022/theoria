@@ -6,6 +6,7 @@ const users = new Map();
 const tokens = new Map();
 const packages = new Map();
 const packageVersions = new Map();
+const packageStars = new Map();
 const sourceObjects = new Map();
 const syncDevices = new Map();
 const syncRecords = new Map();
@@ -169,6 +170,7 @@ const server = createServer(async (request, response) => {
     tokens.clear();
     packages.clear();
     packageVersions.clear();
+    packageStars.clear();
     sourceObjects.clear();
     syncDevices.clear();
     syncRecords.clear();
@@ -220,6 +222,8 @@ const server = createServer(async (request, response) => {
           display_name: seed.creatorDisplayName ?? seed.creatorHandle,
           bio: seed.creatorBio ?? "",
           avatar_path: null,
+          location: seed.creatorLocation ?? "",
+          website_url: seed.creatorWebsite ?? "",
           created_at: now,
           updated_at: now,
         };
@@ -239,6 +243,7 @@ const server = createServer(async (request, response) => {
         package_kind: seed.kind ?? "course",
         source_storage_path: path,
         source_checksum: checksum,
+        source_size: Buffer.byteLength(seed.source ?? "invalid test source"),
         manifest_summary: {
           mcf: seed.mcfVersion ?? "1.1",
           kind: seed.kind ?? "course",
@@ -275,6 +280,8 @@ const server = createServer(async (request, response) => {
         description: seed.description ?? "",
         visibility: seed.visibility ?? "public",
         latest_version_id: versionId,
+        parent_package_id: seed.parentPackageId ?? null,
+        parent_version_id: seed.parentVersionId ?? null,
         created_at: publishedAt,
         updated_at: seed.updatedAt ?? publishedAt,
       });
@@ -329,6 +336,8 @@ const server = createServer(async (request, response) => {
       display_name: String(value.data?.display_name ?? handle).trim(),
       bio: "",
       avatar_path: null,
+      location: "",
+      website_url: "",
       created_at: now,
       updated_at: now,
     };
@@ -463,6 +472,16 @@ const server = createServer(async (request, response) => {
     const user = authUser(request);
     const id = url.searchParams.get("id")?.replace(/^eq\./, "");
     const slug = url.searchParams.get("slug")?.replace(/^eq\./, "");
+    const ownerId = url.searchParams.get("owner_id")?.replace(/^eq\./, "");
+    if (ownerId && !id && !slug)
+      return restResult(
+        request,
+        response,
+        [...packages.values()].filter(
+          (candidate) =>
+            candidate.owner_id === ownerId && candidate.owner_id === user?.id,
+        ),
+      );
     const value = [...packages.values()].find(
       (candidate) =>
         (!id || candidate.id === id) && (!slug || candidate.slug === slug),
@@ -471,6 +490,161 @@ const server = createServer(async (request, response) => {
       request,
       response,
       visiblePackage(value, user) ? value : undefined,
+    );
+  }
+  if (
+    url.pathname === "/rest/v1/rpc/profile_repository_summary" &&
+    request.method === "POST"
+  ) {
+    const value = await body(request);
+    const profile = [...profiles.values()].find(
+      (candidate) =>
+        candidate.handle === String(value.requested_handle ?? "").toLowerCase(),
+    );
+    if (!profile) return json(response, 200, []);
+    const publicPackages = [...packages.values()].filter(
+      (candidate) =>
+        candidate.owner_id === profile.id && candidate.visibility === "public",
+    );
+    const releases = [...packageVersions.values()]
+      .filter((release) =>
+        publicPackages.some((candidate) => candidate.id === release.package_id),
+      )
+      .sort((left, right) =>
+        right.published_at.localeCompare(left.published_at),
+      );
+    return json(response, 200, [
+      {
+        public_package_count: publicPackages.length,
+        total_version_count: releases.length,
+        total_stars_received: [...packageStars.values()].filter((star) =>
+          publicPackages.some((candidate) => candidate.id === star.packageId),
+        ).length,
+        recent_activity: releases.slice(0, 8).map((release) => {
+          const repository = packages.get(release.package_id);
+          return {
+            slug: repository.slug,
+            title: repository.title,
+            version: release.version,
+            publishedAt: release.published_at,
+          };
+        }),
+      },
+    ]);
+  }
+  if (
+    url.pathname === "/rest/v1/rpc/repository_package_network" &&
+    request.method === "POST"
+  ) {
+    const value = await body(request);
+    const user = authUser(request);
+    const target = packages.get(value.requested_package_id);
+    if (!visiblePackage(target, user)) return json(response, 200, []);
+    const parent = target.parent_package_id
+      ? packages.get(target.parent_package_id)
+      : undefined;
+    const parentVersion = target.parent_version_id
+      ? packageVersions.get(target.parent_version_id)
+      : undefined;
+    const parentProfile = parent ? profiles.get(parent.owner_id) : undefined;
+    const directForks = [...packages.values()]
+      .filter(
+        (candidate) =>
+          candidate.parent_package_id === target.id &&
+          candidate.visibility === "public",
+      )
+      .map((candidate) => ({
+        slug: candidate.slug,
+        title: candidate.title,
+        creatorHandle: profiles.get(candidate.owner_id)?.handle ?? "unknown",
+        createdAt: candidate.created_at,
+      }));
+    return json(response, 200, [
+      {
+        star_count: [...packageStars.values()].filter(
+          (star) => star.packageId === target.id,
+        ).length,
+        fork_count: directForks.length,
+        viewer_starred: Boolean(
+          user && packageStars.has(`${user.id}:${target.id}`),
+        ),
+        parent_slug:
+          parent && visiblePackage(parent, user) ? parent.slug : null,
+        parent_title:
+          parent && visiblePackage(parent, user) ? parent.title : null,
+        parent_version:
+          parent && visiblePackage(parent, user)
+            ? parentVersion?.version
+            : null,
+        parent_creator_handle:
+          parent && visiblePackage(parent, user) ? parentProfile?.handle : null,
+        direct_forks: directForks,
+      },
+    ]);
+  }
+  if (
+    url.pathname === "/rest/v1/rpc/set_package_star" &&
+    request.method === "POST"
+  ) {
+    const user = authUser(request);
+    if (!user)
+      return json(response, 401, {
+        code: "42501",
+        message: "Authentication required",
+      });
+    const value = await body(request);
+    const target = packages.get(value.requested_package_id);
+    if (!visiblePackage(target, user))
+      return json(response, 403, {
+        code: "42501",
+        message: "Package is unavailable",
+      });
+    const key = `${user.id}:${target.id}`;
+    if (value.requested_starred)
+      packageStars.set(key, {
+        userId: user.id,
+        packageId: target.id,
+        createdAt: new Date().toISOString(),
+      });
+    else packageStars.delete(key);
+    return json(response, 200, [
+      {
+        starred: packageStars.has(key),
+        star_count: [...packageStars.values()].filter(
+          (star) => star.packageId === target.id,
+        ).length,
+      },
+    ]);
+  }
+  if (
+    url.pathname === "/rest/v1/rpc/repository_starred_package_ids" &&
+    request.method === "POST"
+  ) {
+    const user = authUser(request);
+    if (!user)
+      return json(response, 401, {
+        code: "42501",
+        message: "Authentication required",
+      });
+    const value = await body(request);
+    const values = [...packageStars.values()]
+      .filter(
+        (star) =>
+          star.userId === user.id &&
+          visiblePackage(packages.get(star.packageId), user),
+      )
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+    const total = values.length;
+    const offset = Number(value.requested_offset ?? 0);
+    const limit = Number(value.requested_limit ?? 12);
+    return json(
+      response,
+      200,
+      values.slice(offset, offset + limit).map((star) => ({
+        package_id: star.packageId,
+        starred_at: star.createdAt,
+        total_count: total,
+      })),
     );
   }
   if (
@@ -799,17 +973,78 @@ const server = createServer(async (request, response) => {
         candidate.package_id === value.requested_package_id &&
         candidate.version === value.requested_version,
     );
-    if (conflict)
+    if (conflict) {
+      const previous = [...packageVersions.values()].find(
+        (candidate) =>
+          candidate.package_id === value.requested_package_id &&
+          candidate.version === value.requested_version,
+      );
+      if (
+        previous.source_checksum === value.requested_source_checksum &&
+        previous.source_storage_path === value.requested_source_storage_path &&
+        previous.source_size === value.requested_source_size &&
+        JSON.stringify(previous.manifest_summary) ===
+          JSON.stringify(value.requested_manifest_summary) &&
+        previous.release_notes === value.requested_release_notes
+      )
+        return json(response, 200, [
+          {
+            package_id: value.requested_package_id,
+            version_id: previous.id,
+            slug: packages.get(value.requested_package_id)?.slug,
+            version: previous.version,
+            published_at: previous.published_at,
+          },
+        ]);
       return json(response, 409, {
         code: "23505",
         message: "package version already exists",
       });
+    }
     const existing = packages.get(value.requested_package_id);
     if (existing && existing.owner_id !== user.id)
       return json(response, 403, {
         code: "42501",
         message: "package belongs to another creator",
       });
+    if (
+      existing &&
+      (existing.parent_package_id !==
+        (value.requested_parent_package_id ?? null) ||
+        existing.parent_version_id !==
+          (value.requested_parent_version_id ?? null))
+    )
+      return json(response, 409, {
+        code: "55000",
+        message: "published fork lineage cannot be changed",
+      });
+    if (value.requested_parent_package_id) {
+      const parent = packages.get(value.requested_parent_package_id);
+      const parentVersion = packageVersions.get(
+        value.requested_parent_version_id,
+      );
+      if (
+        !visiblePackage(parent, user) ||
+        parentVersion?.package_id !== parent?.id
+      )
+        return json(response, 403, {
+          code: "42501",
+          message: "fork source is unavailable",
+        });
+      if (
+        !existing &&
+        [...packages.values()].some(
+          (candidate) =>
+            candidate.owner_id === user.id &&
+            candidate.parent_package_id === value.requested_parent_package_id &&
+            candidate.parent_version_id === value.requested_parent_version_id,
+        )
+      )
+        return json(response, 409, {
+          code: "23505",
+          message: "fork already exists",
+        });
+    }
     if (
       [...packages.values()].some(
         (candidate) =>
@@ -831,6 +1066,7 @@ const server = createServer(async (request, response) => {
       package_kind: value.requested_package_kind,
       source_storage_path: value.requested_source_storage_path,
       source_checksum: value.requested_source_checksum,
+      source_size: value.requested_source_size,
       manifest_summary: value.requested_manifest_summary,
       validation_summary: value.requested_validation_summary,
       release_notes: value.requested_release_notes,
@@ -845,6 +1081,14 @@ const server = createServer(async (request, response) => {
       description: value.requested_description,
       visibility: value.requested_visibility,
       latest_version_id: versionId,
+      parent_package_id:
+        existing?.parent_package_id ??
+        value.requested_parent_package_id ??
+        null,
+      parent_version_id:
+        existing?.parent_version_id ??
+        value.requested_parent_version_id ??
+        null,
       created_at: existing?.created_at ?? now,
       updated_at: now,
     });
@@ -879,8 +1123,10 @@ const server = createServer(async (request, response) => {
     if (!path.startsWith(`packages/${user.id}/`) || sourceObjects.has(path))
       return json(response, 400, {
         statusCode: "400",
-        error: "Invalid path",
-        message: "Object path is unavailable",
+        error: sourceObjects.has(path) ? "Duplicate" : "Invalid path",
+        message: sourceObjects.has(path)
+          ? "Object already exists"
+          : "Object path is unavailable",
       });
     const raw = await rawBody(request);
     sourceObjects.set(path, {

@@ -8,24 +8,6 @@ import { serverPlatformClient } from "../../lib/platform/server";
 
 export const dynamic = "force-dynamic";
 
-const principles = [
-  {
-    number: "01",
-    title: "Bring the package.",
-    body: "MCF learning packages stay portable. Import locally, inspect the source, and keep control of the archive.",
-  },
-  {
-    number: "02",
-    title: "Learn without a gate.",
-    body: "Reading and progress belong in the browser first. An account becomes useful when sharing is useful.",
-  },
-  {
-    number: "03",
-    title: "Publish deliberately.",
-    body: "Creation, validation, preview, and export form one focused workspace—not a collection of disconnected tools.",
-  },
-] as const;
-
 export default async function HomePage() {
   const platform = await serverPlatformClient();
   let recent: readonly PublishedPackage[] = [];
@@ -40,52 +22,53 @@ export default async function HomePage() {
     unavailable = true;
   }
   return (
-    <>
-      <section className="hero">
-        <div className="eyebrow">
-          <span /> Repository-first learning
+    <div className="page-wrap platform-dashboard">
+      <header className="dashboard-intro">
+        <div>
+          <p className="section-label">Portable learning platform</p>
+          <h1>Discover, learn, and create MCF packages.</h1>
+          <p>
+            Courses, progress, and drafts work locally without an account.
+            Publishing and synchronization remain explicit choices.
+          </p>
         </div>
-        <h1>
-          Learning packages
-          <br />
-          with somewhere to <em>live.</em>
-        </h1>
-        <p className="hero-copy">
-          Theoria is a home for discovering, reading, creating, and publishing
-          portable MCF courses—without surrendering the source.
-        </p>
-        <div className="actions">
-          <LinkButton href="/explore">
-            Explore packages <span aria-hidden="true">→</span>
-          </LinkButton>
-          <LinkButton href="/studio" secondary>
-            Open the studio
-          </LinkButton>
-        </div>
-        <div className="hero-note">
-          <Status tone="positive">Local-first</Status>
-          <span>No account required for browser-owned work</span>
-        </div>
-      </section>
+        <form action="/explore" role="search" className="dashboard-search">
+          <label className="field">
+            <span>Search public packages</span>
+            <input
+              type="search"
+              name="q"
+              maxLength={160}
+              placeholder="Title, subject, keyword, or creator"
+            />
+          </label>
+          <button className="button">Search</button>
+        </form>
+      </header>
 
-      <section className="home-repository">
-        <header className="split-heading">
+      <nav className="dashboard-actions" aria-label="Quick actions">
+        <LinkButton href="/explore">Explore courses</LinkButton>
+        <LinkButton href="/library" secondary>
+          Open Library
+        </LinkButton>
+        <LinkButton href="/studio" secondary>
+          Open Studio
+        </LinkButton>
+        <LinkButton href="/compile" secondary>
+          Open Compiler
+        </LinkButton>
+        <Status tone="positive">Local-first · account optional</Status>
+      </nav>
+
+      <section className="dashboard-section home-repository">
+        <header className="dashboard-section-heading">
           <div>
             <p className="section-label">Public repository</p>
             <h2>Recently published</h2>
           </div>
-          <form action="/explore" role="search" className="home-search">
-            <label className="field">
-              <span>Search published packages</span>
-              <input
-                type="search"
-                name="q"
-                maxLength={160}
-                placeholder="Search titles, subjects, or creators"
-              />
-            </label>
-            <button className="button">Search</button>
-          </form>
+          <LinkButton href="/explore" secondary>
+            View all
+          </LinkButton>
         </header>
         {unavailable ? (
           <Notice title="Repository unavailable">
@@ -115,68 +98,17 @@ export default async function HomePage() {
           <nav className="subject-collections" aria-label="Browse by subject">
             <strong>Browse subjects</strong>
             {subjects.map((subject) => (
-              <a
+              <LinkButton
                 key={subject.value}
                 href={`/explore?subject=${encodeURIComponent(subject.value)}`}
+                secondary
               >
                 {subject.value} <span>{subject.packageCount}</span>
-              </a>
+              </LinkButton>
             ))}
           </nav>
         ) : null}
-        <div className="actions">
-          <LinkButton href="/explore">Explore all packages</LinkButton>
-          <LinkButton href="/studio" secondary>
-            Create
-          </LinkButton>
-        </div>
       </section>
-
-      <section className="statement">
-        <p className="section-label">A durable foundation</p>
-        <h2>
-          The package is the product.
-          <br />
-          The platform helps it travel.
-        </h2>
-        <div className="principle-grid">
-          {principles.map((principle) => (
-            <article className="principle" key={principle.number}>
-              <span>{principle.number}</span>
-              <h3>{principle.title}</h3>
-              <p>{principle.body}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="workspace-band">
-        <div>
-          <p className="section-label">Three rooms, clear doors</p>
-          <h2>
-            One platform.
-            <br />
-            Focused workspaces.
-          </h2>
-        </div>
-        <div className="workspace-list">
-          <a href="/library">
-            <span>Learning</span>
-            <strong>Library & focused reader</strong>
-            <i aria-hidden="true">↗</i>
-          </a>
-          <a href="/studio">
-            <span>Creation</span>
-            <strong>Author, validate & export</strong>
-            <i aria-hidden="true">↗</i>
-          </a>
-          <div>
-            <span>Institutional</span>
-            <strong>Purposefully separate</strong>
-            <Status>Later</Status>
-          </div>
-        </div>
-      </section>
-    </>
+    </div>
   );
 }

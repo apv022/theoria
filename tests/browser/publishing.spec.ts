@@ -109,6 +109,9 @@ test("reports slug and duplicate-version conflicts", async ({ page }) => {
   await publishFirst(page, "shared-course");
   await page.getByLabel("Semantic version").fill("1.0.0");
   await page
+    .getByLabel("Release notes")
+    .fill("Conflicting metadata for an existing version.");
+  await page
     .getByRole("button", { name: "Publish new immutable version" })
     .click();
   await expect(page.getByText(/already exists|not owned/)).toBeVisible();

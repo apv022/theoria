@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Theoria theta mark">
+  <circle cx="32" cy="32" r="27" fill="none" stroke="#526b54" stroke-width="4"/>
+  <ellipse cx="32" cy="32" rx="14" ry="19" fill="none" stroke="#526b54" stroke-width="4"/>
+  <path d="M18 32h28" fill="none" stroke="#526b54" stroke-width="4" stroke-linecap="square"/>
+</svg>
