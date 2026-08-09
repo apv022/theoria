@@ -8,7 +8,20 @@ export const dynamic = "force-dynamic";
 
 export default async function StarredCoursesPage() {
   const platform = await serverPlatformClient();
-  const identity = await platform.authentication.currentIdentity();
+  let identity;
+  try {
+    identity = await platform.authentication.currentIdentity();
+  } catch {
+    return (
+      <div className="page-wrap narrow-page">
+        <h1>Starred courses</h1>
+        <Notice title="Account service unavailable">
+          Your account and stars could not be checked. Local Library, Reader,
+          and Studio remain available; reload to retry.
+        </Notice>
+      </div>
+    );
+  }
 
   if (!identity)
     return (
@@ -22,7 +35,20 @@ export default async function StarredCoursesPage() {
       </div>
     );
 
-  const listing = await platform.repository.listStarred(1, 24);
+  let listing;
+  try {
+    listing = await platform.repository.listStarred(1, 24);
+  } catch {
+    return (
+      <div className="page-wrap narrow-page">
+        <h1>Starred courses</h1>
+        <Notice title="Stars unavailable">
+          Your saved stars could not be loaded. Nothing was removed; reload to
+          retry.
+        </Notice>
+      </div>
+    );
+  }
   return (
     <div className="page-wrap profile-page">
       <p className="section-label">Social bookmarks</p>

@@ -163,9 +163,10 @@ test("blocks invalid source and supports retry after an upload failure", async (
   ).toBeVisible();
 });
 
-test("private source and metadata reject anonymous readers", async ({
+test("owners can find every private version while other readers remain denied", async ({
   page,
   request,
+  browser,
 }) => {
   await signup(page, "private_author");
   await createDraft(page, "Private Course");
@@ -173,6 +174,19 @@ test("private source and metadata reject anonymous readers", async ({
   await expect(
     page.getByRole("link", { name: "View immutable version" }),
   ).toBeVisible();
+  await page.goto("/repositories");
+  await expect(
+    page.getByRole("heading", { name: "Private Course" }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Version 1.0.0" }).click();
+  await expect(
+    page.getByRole("heading", { name: /Private Course 1\.0\.0/ }),
+  ).toBeVisible();
+  const ownerDownload = page.waitForEvent("download");
+  await page.getByRole("link", { name: "Download source" }).click();
+  await expect((await ownerDownload).suggestedFilename()).toBe(
+    "private-course-1.0.0.mcf.zip",
+  );
   const anonymousPage = await request.get("/packages/private-course");
   expect(anonymousPage.status()).toBe(200);
   expect(await anonymousPage.text()).toContain("Package unavailable");
@@ -180,4 +194,17 @@ test("private source and metadata reject anonymous readers", async ({
     "/api/packages/private-course/versions/1.0.0/source",
   );
   expect(anonymousSource.status()).toBe(404);
+
+  const secondContext = await browser.newContext({
+    baseURL: "http://127.0.0.1:3000",
+  });
+  const secondPage = await secondContext.newPage();
+  await signup(secondPage, "private_reader");
+  await secondPage.goto("/packages/private-course");
+  await expect(secondPage.getByText("Package unavailable")).toBeVisible();
+  const secondSource = await secondContext.request.get(
+    "/api/packages/private-course/versions/1.0.0/source",
+  );
+  expect(secondSource.status()).toBe(404);
+  await secondContext.close();
 });

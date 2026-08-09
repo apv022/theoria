@@ -1,0 +1,151 @@
+---
+id: features
+title: "Core features"
+---
+
+:::mcf-activity
+type: notes
+id: rich-content
+title: "Rich content"
+:::
+
+# Rich content
+
+Inline math: $e^{i\pi}+1=0$.
+
+![MCF source can feed a local reader](asset:format-diagram)
+
+:::mcf-end
+
+:::mcf-activity
+type: practice
+id: question-showcase
+title: "Question types"
+:::
+
+```mcf-question
+id: mc
+type: multiple_choice
+prompt: "Which value equals $\\frac{12}{11}$? <script>window.readerUnsafe=true</script>"
+options:
+  - id: fraction
+    text: "The fraction **$\\frac{12}{11}$**"
+    feedback: "Correct: $\\frac{12}{11}$ is already exact."
+  - id: root
+    text: "The value $\\sqrt{144}$"
+    feedback: "That is **12**, not the fraction."
+answer: fraction
+hint: "Compare $\\frac{12}{11}$ with $12$."
+explanation: "The exact result remains $\\frac{12}{11}$."
+```
+
+```mcf-question
+id: ms
+type: multiple_select
+prompt: "Select both forms equal to $12$."
+options:
+  - id: root
+    text: "$\\sqrt{144}$"
+    feedback: "Correct: the principal root is **12**."
+  - id: integer
+    text: "**12**"
+    feedback: "Correct."
+  - id: fraction
+    text: "$\\frac{12}{11}$"
+answer: [root, integer]
+scoring: partial
+```
+
+```mcf-question
+id: tf
+type: true_false
+prompt: "MCF is a source format."
+answer: true
+```
+
+```mcf-question
+id: num
+type: numeric
+prompt: "What is $\\sqrt{144}$?"
+answer: 12
+```
+
+```mcf-question
+id: short
+type: short_answer
+prompt: "Name the format."
+answer: MCF
+```
+
+```mcf-question
+id: reflection
+type: open_response
+prompt: "Where would **portable** course source help?"
+minimum_words: 1
+```
+
+```mcf-question
+id: match
+type: matching
+prompt: "Match each rich expression."
+premises:
+  - id: square-root
+    text: "The root $\\sqrt{144}$"
+  - id: fraction
+    text: "The fraction $\\frac{12}{11}$"
+responses:
+  - id: twelve
+    text: "**12**"
+  - id: ratio
+    text: "Twelve *elevenths*"
+answer:
+  square-root: twelve
+  fraction: ratio
+scoring: partial
+```
+
+```mcf-question
+id: order
+type: ordering
+prompt: "Order the rich steps."
+items:
+  - id: simplify
+    text: "Simplify $\\sqrt{144}$."
+  - id: report
+    text: "Report the answer **12**."
+answer: [simplify, report]
+scoring: partial
+```
+
+```mcf-question
+id: assessed
+type: true_false
+prompt: "A reader must sanitize untrusted HTML."
+answer: true
+explanation: "Raw HTML is **untrusted** rich content."
+```
+
+```mcf-question
+id: essay
+type: essay
+prompt: "Explain why $x^2$ is portable rich content."
+rubric: rich-rubric
+evaluation: manual
+minimum_words: 1
+```
+
+:::mcf-end
+
+:::mcf-activity
+type: assignment
+id: rich-assignment
+title: "Rich rubric"
+evaluation: manual
+rubric: rich-rubric
+submission:
+  modes: [text]
+:::
+
+Use the rubric to explain **portable math**.
+
+:::mcf-end

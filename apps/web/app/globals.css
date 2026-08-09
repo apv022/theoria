@@ -572,6 +572,28 @@ h3 {
   border: 1px solid var(--line);
   background: var(--white);
 }
+.owned-repository-list {
+  display: grid;
+  gap: 1rem;
+}
+.owned-repository {
+  padding: 1.2rem;
+  border: 1px solid var(--line);
+  background: var(--white);
+}
+.owned-repository h2 {
+  margin-top: 1rem;
+}
+.owned-version-list {
+  display: grid;
+  gap: 0.45rem;
+  margin: 1rem 0 0;
+  padding-left: 1.25rem;
+}
+.owned-version-list time {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
 .repository-card-mark {
   display: grid;
   place-items: end;
@@ -1385,6 +1407,8 @@ h3 {
   margin: 0.55rem 0;
   padding: 0.85rem;
   border: 1px solid var(--line);
+}
+.reader-option > label {
   cursor: pointer;
 }
 .reader-option:hover {
@@ -1395,19 +1419,39 @@ h3 {
   height: 1.2rem;
   accent-color: var(--accent);
 }
-.reader-option small {
+.reader-option-feedback {
   grid-column: 2;
   color: var(--muted);
+}
+.reader-option .reader-rich > :first-child,
+.matching-premise .reader-rich > :first-child,
+.ordering-control .reader-rich > :first-child,
+.reader-rubric .reader-rich > :first-child {
+  margin-top: 0;
+}
+.reader-option .reader-rich > :last-child,
+.matching-premise .reader-rich > :last-child,
+.ordering-control .reader-rich > :last-child,
+.reader-rubric .reader-rich > :last-child {
+  margin-bottom: 0;
 }
 .matching-control {
   display: grid;
   gap: 0.8rem;
 }
-.matching-control label {
+.matching-premise {
+  margin: 0;
+  padding: 0.8rem;
+  border: 1px solid var(--line);
+}
+.matching-premise legend {
+  max-width: 100%;
+  padding: 0 0.4rem;
+  font-weight: 700;
+}
+.matching-responses {
   display: grid;
-  grid-template-columns: minmax(9rem, 1fr) minmax(12rem, 1fr);
-  align-items: center;
-  gap: 1rem;
+  gap: 0.4rem;
 }
 .ordering-control {
   padding: 0;
@@ -2502,6 +2546,66 @@ h3 {
   }
   .asset-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+.compiler-reader-preview {
+  position: fixed;
+  z-index: 120;
+  inset: 1rem;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--paper);
+  box-shadow: var(--shadow-md);
+}
+.compiler-reader-preview > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-raised);
+}
+.compiler-reader-preview > header h2 {
+  margin: 0;
+  font: 1.4rem/1.1 var(--display);
+}
+.compiler-reader-preview > .active-reader {
+  min-height: 0;
+  overflow: auto;
+}
+.compiler-reader-preview [data-reader-context="preview"] .reader-course-nav {
+  top: 0;
+}
+.reader-outline-nav button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.4rem;
+  border: 0;
+  padding: 0.45rem;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.reader-outline-nav button:hover,
+.reader-outline-nav button[aria-current="page"] {
+  background: var(--surface-subtle);
+}
+
+@media (max-width: 760px) {
+  .compiler-reader-preview {
+    inset: 0;
+    border: 0;
+    border-radius: 0;
+  }
+  .compiler-reader-preview > header {
+    padding: 0.75rem;
   }
 }
 
@@ -3829,4 +3933,375 @@ progress::-moz-progress-bar {
 
 .corrupt-record .button {
   justify-self: start;
+}
+
+/* Pass 2 pilot hardening: shared course imagery and compact learner flows. */
+.course-cover {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  color: #f8faf7;
+  background: linear-gradient(145deg, #1f2923, #476653);
+  isolation: isolate;
+}
+.course-cover[data-palette="1"] {
+  background: linear-gradient(145deg, #25283a, #58668c);
+}
+.course-cover[data-palette="2"] {
+  background: linear-gradient(145deg, #3c2924, #9a654d);
+}
+.course-cover[data-palette="3"] {
+  background: linear-gradient(145deg, #20333a, #4e7d86);
+}
+.course-cover[data-palette="4"] {
+  background: linear-gradient(145deg, #352a3d, #7a5f86);
+}
+.course-cover[data-palette="5"] {
+  background: linear-gradient(145deg, #33321f, #7c7a48);
+}
+.course-cover::before {
+  position: absolute;
+  z-index: -1;
+  right: -18%;
+  bottom: -45%;
+  width: 75%;
+  aspect-ratio: 1;
+  border: 1px solid color-mix(in srgb, currentColor 32%, transparent);
+  border-radius: 50%;
+  box-shadow: 0 0 0 2rem color-mix(in srgb, currentColor 5%, transparent);
+  content: "";
+}
+.course-cover > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: color-mix(in srgb, #ffffff 8%, transparent);
+}
+.package-cover-fallback {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: clamp(0.7rem, 5%, 1.25rem);
+}
+.package-cover-fallback span {
+  align-self: end;
+  font: clamp(2.5rem, 9vw, 5rem) / 1 var(--display);
+  letter-spacing: -0.08em;
+}
+.package-cover-fallback small {
+  font: 0.66rem var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.repository-card {
+  grid-template-rows: auto 1fr;
+}
+.repository-card-cover {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border-radius: 0;
+}
+.library-card-cover {
+  width: 3rem;
+  height: 3rem;
+  flex: 0 0 3rem;
+  border-radius: var(--radius-sm);
+}
+.detail-cover {
+  aspect-ratio: auto;
+  gap: 0.85rem;
+  padding: 1rem;
+}
+.detail-cover > .course-cover {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+}
+.detail-grid h1 {
+  overflow-wrap: anywhere;
+  text-transform: none;
+  text-wrap: balance;
+}
+.repository-controls {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+.repository-query,
+.repository-advanced,
+.repository-control-actions {
+  grid-column: 1 / -1;
+}
+.repository-advanced {
+  border-top: 1px solid var(--line);
+  padding-top: 0.75rem;
+}
+.repository-advanced summary,
+.reader-outline-toggle {
+  min-height: 2.75rem;
+  cursor: pointer;
+  font-weight: 700;
+}
+.repository-advanced > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  padding-top: 0.75rem;
+}
+.repository-loading {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+}
+.repository-loading span {
+  min-height: 13rem;
+  border: 1px solid var(--line);
+  background: linear-gradient(
+    110deg,
+    var(--surface) 30%,
+    var(--surface-subtle) 50%,
+    var(--surface) 70%
+  );
+}
+.platform-mobile-account {
+  display: none;
+}
+.platform-primary .search-navigation {
+  margin-left: 0.25rem;
+  border: 1px solid var(--line);
+}
+.platform-mobile-tools .utility-nav,
+.platform-mobile-tools .account-navigation,
+.platform-mobile-tools .account-navigation details {
+  display: grid;
+  width: 100%;
+}
+.platform-mobile-tools .utility-nav > a,
+.platform-mobile-tools .account-navigation summary {
+  width: 100%;
+  min-height: 2.75rem;
+  align-items: center;
+  padding: 0.55rem 0.65rem;
+}
+.empty-state-actions {
+  justify-content: center;
+}
+.profile-heading > div:last-child,
+.profile-contact,
+.profile-activity li,
+.facts dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.profile-heading h1 {
+  text-wrap: balance;
+}
+.reader-outline-toggle {
+  display: none;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.7rem;
+  color: inherit;
+  background: transparent;
+}
+.technical-note {
+  max-width: 55ch;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.technical-package-details summary {
+  min-height: 2.75rem;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+@media (max-width: 1000px) {
+  .platform-desktop-account {
+    display: none;
+  }
+  .platform-mobile-account {
+    display: block;
+  }
+  .platform-mobile-menu nav {
+    max-height: calc(100dvh - 4.5rem);
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .platform-header .brand,
+  .platform-header button,
+  .platform-header summary,
+  .metadata-tags a,
+  .repository-tabs a,
+  .profile-activity a {
+    min-height: 2.75rem;
+  }
+  .platform-header .brand {
+    min-width: 2.75rem;
+    justify-content: center;
+  }
+  .repository-controls {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+  .repository-advanced > div,
+  .repository-loading {
+    grid-template-columns: 1fr;
+  }
+  .repository-control-actions .button {
+    flex: 1 1 10rem;
+  }
+  .profile-heading {
+    flex-direction: column;
+    align-items: stretch;
+    margin: 2rem 0 1.5rem;
+  }
+  .profile-heading .avatar {
+    width: 4.5rem;
+    height: 4.5rem;
+    flex-basis: 4.5rem;
+    font-size: 2.75rem;
+  }
+  .profile-heading h1 {
+    margin-top: 0.5rem;
+    font-size: clamp(2.25rem, 11vw, 3.5rem);
+    line-height: 1;
+  }
+  .profile-contact {
+    display: grid;
+    gap: 0.65rem;
+  }
+  .profile-activity ol {
+    padding-left: 1.25rem;
+  }
+  .profile-activity time {
+    display: block;
+    margin-top: 0.2rem;
+  }
+  .repository-tabs {
+    margin-inline: 0;
+    padding-inline: 0.5rem;
+    scroll-padding-inline: 0.5rem;
+  }
+  .repository-tabs a {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+  }
+  .facts div {
+    display: grid;
+    gap: 0.25rem;
+  }
+  .facts dd {
+    text-align: left;
+  }
+  .published-actions,
+  .repository-action-row,
+  .repository-download-row {
+    align-items: stretch;
+  }
+  .published-actions > .button,
+  .repository-action-row .button,
+  .repository-download-row .button {
+    flex: 1 1 10rem;
+    min-height: 2.75rem;
+  }
+  .reader-course-nav {
+    max-height: none;
+    overflow: visible;
+  }
+  .reader-outline-toggle {
+    display: flex;
+    margin-top: 0.85rem;
+  }
+  .reader-outline-nav {
+    display: none;
+    max-height: 50vh;
+    overflow-y: auto;
+    margin-top: 0.5rem;
+  }
+  .reader-outline-nav.open {
+    display: block;
+  }
+  .reader-rubric .rubric-scroll {
+    overflow: visible;
+  }
+  .reader-rubric table,
+  .reader-rubric tbody,
+  .reader-rubric tr,
+  .reader-rubric th,
+  .reader-rubric td {
+    display: block;
+    width: 100%;
+  }
+  .reader-rubric thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+  .reader-rubric tr {
+    margin-top: 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+  }
+  .reader-rubric th,
+  .reader-rubric td {
+    border: 0;
+  }
+  .reader-rubric th::before,
+  .reader-rubric td::before {
+    display: block;
+    margin-bottom: 0.35rem;
+    color: var(--muted);
+    font: 0.65rem var(--mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .reader-rubric th::before {
+    content: "Criterion";
+  }
+  .reader-rubric td::before {
+    content: "Levels";
+  }
+  .studio-create .actions .button,
+  .studio-inline-actions .button {
+    min-height: 2.75rem;
+  }
+}
+
+@media (max-width: 390px) {
+  .page-wrap,
+  .studio-home,
+  .compiler-workspace,
+  .org-page {
+    width: min(100% - 0.75rem, 78rem);
+  }
+  .library-card,
+  .auth-card,
+  .reader-activity,
+  .reader-question,
+  .studio-panel,
+  .empty-state,
+  .notice {
+    padding: 0.85rem;
+  }
+  .repository-card-body {
+    padding: 0.9rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .repository-control-actions .button {
+    width: 100%;
+    flex: 0 0 auto;
+    min-height: 2.75rem;
+  }
 }

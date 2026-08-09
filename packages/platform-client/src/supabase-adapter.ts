@@ -958,7 +958,7 @@ class SupabaseRepository implements RepositoryClient {
     };
   }
 
-  async listOwned(): Promise<readonly PublishedPackage[]> {
+  async listOwned(page = 1, pageSize = 12): Promise<RepositoryResult> {
     const { data: authData, error: authError } =
       await this.client.auth.getUser();
     if (authError || !authData.user)
@@ -966,18 +966,29 @@ class SupabaseRepository implements RepositoryClient {
         "AUTH_REQUIRED",
         "Sign in to list owned repositories.",
       );
-    const { data, error } = await this.client
+    const normalizedPage = Math.max(1, Math.floor(page));
+    const normalizedPageSize = Math.min(24, Math.max(1, Math.floor(pageSize)));
+    const start = (normalizedPage - 1) * normalizedPageSize;
+    const { data, error, count } = await this.client
       .from("packages")
-      .select("id")
+      .select("id", { count: "exact" })
       .eq("owner_id", authData.user.id)
-      .order("updated_at", { ascending: false });
+      .order("updated_at", { ascending: false })
+      .range(start, start + normalizedPageSize - 1);
     if (error) throw this.operationError(error);
     const values = await Promise.all(
       data.map((row) => this.getPackage("id", row.id)),
     );
     const packages: PublishedPackage[] = [];
     for (const value of values) if (value) packages.push(value);
-    return packages;
+    const total = count ?? packages.length;
+    return {
+      packages,
+      total,
+      page: normalizedPage,
+      pageSize: normalizedPageSize,
+      totalPages: total ? Math.ceil(total / normalizedPageSize) : 0,
+    };
   }
 }
 

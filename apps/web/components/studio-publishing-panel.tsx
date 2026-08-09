@@ -79,14 +79,19 @@ export function StudioPublishingPanel({
     if (!identity || draft.origin) return;
     void platform.repository
       .listOwned()
-      .then((repositories) => {
+      .then(({ packages: repositories }) => {
         setOwnedRepositories(repositories);
         const published = repositories.find(
           (repository) => repository.id === draft.publication?.remotePackageId,
         );
         if (published) setVisibility(published.visibility);
       })
-      .catch(() => setOwnedRepositories([]));
+      .catch(() => {
+        setOwnedRepositories([]);
+        setError(
+          "Owned repositories could not be loaded. Nothing was removed; reload to retry.",
+        );
+      });
   }, [draft.origin, draft.publication, identity, platform]);
 
   const selectedRepository = ownedRepositories.find(

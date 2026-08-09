@@ -1,0 +1,180 @@
+---
+id: questions
+title: "Deterministic question load"
+---
+
+:::mcf-activity
+type: practice
+id: question-load
+:::
+
+```mcf-question
+id: q01
+type: multiple_choice
+prompt: "Question 01"
+options: [{ id: a, text: "A" }, { id: b, text: "B" }]
+answer: a
+```
+```mcf-question
+id: q02
+type: multiple_choice
+prompt: "Question 02"
+options: [{ id: a, text: "A" }, { id: b, text: "B" }]
+answer: a
+```
+```mcf-question
+id: q03
+type: multiple_choice
+prompt: "Question 03"
+options: [{ id: a, text: "A" }, { id: b, text: "B" }]
+answer: a
+```
+```mcf-question
+id: q04
+type: multiple_choice
+prompt: "Question 04"
+options: [{ id: a, text: "A" }, { id: b, text: "B" }]
+answer: a
+```
+```mcf-question
+id: q05
+type: multiple_choice
+prompt: "Question 05"
+options: [{ id: a, text: "A" }, { id: b, text: "B" }]
+answer: a
+```
+```mcf-question
+id: q06
+type: multiple_choice
+prompt: "Question 06"
+options: [{ id: a, text: "A" }, { id: b, text: "B" }]
+answer: a
+```
+```mcf-question
+id: q07
+type: multiple_choice
+prompt: "Question 07"
+options: [{ id: a, text: "A" }, { id: b, text: "B" }]
+answer: a
+```
+```mcf-question
+id: q08
+type: multiple_choice
+prompt: "Question 08"
+options: [{ id: a, text: "A" }, { id: b, text: "B" }]
+answer: a
+```
+```mcf-question
+id: q09
+type: multiple_choice
+prompt: "Question 09"
+options: [{ id: a, text: "A" }, { id: b, text: "B" }]
+answer: a
+```
+```mcf-question
+id: q10
+type: multiple_choice
+prompt: "Question 10"
+options: [{ id: a, text: "A" }, { id: b, text: "B" }]
+answer: a
+```
+```mcf-question
+id: q11
+type: multiple_choice
+prompt: "Question 11"
+options: [{ id: a, text: "A" }, { id: b, text: "B" }]
+answer: a
+```
+```mcf-question
+id: q12
+type: multiple_choice
+prompt: "Question 12"
+options: [{ id: a, text: "A" }, { id: b, text: "B" }]
+answer: a
+```
+```mcf-question
+id: q13
+type: multiple_choice
+prompt: "Question 13"
+options: [{ id: a, text: "A" }, { id: b, text: "B" }]
+answer: a
+```
+```mcf-question
+id: q14
+type: multiple_choice
+prompt: "Question 14"
+options: [{ id: a, text: "A" }, { id: b, text: "B" }]
+answer: a
+```
+```mcf-question
+id: q15
+type: multiple_choice
+prompt: "Question 15"
+options: [{ id: a, text: "A" }, { id: b, text: "B" }]
+answer: a
+```
+```mcf-question
+id: q16
+type: multiple_choice
+prompt: "Question 16"
+options: [{ id: a, text: "A" }, { id: b, text: "B" }]
+answer: a
+```
+```mcf-question
+id: q17
+type: multiple_choice
+prompt: "Question 17"
+options: [{ id: a, text: "A" }, { id: b, text: "B" }]
+answer: a
+```
+```mcf-question
+id: q18
+type: multiple_choice
+prompt: "Question 18"
+options: [{ id: a, text: "A" }, { id: b, text: "B" }]
+answer: a
+```
+```mcf-question
+id: q19
+type: multiple_choice
+prompt: "Question 19"
+options: [{ id: a, text: "A" }, { id: b, text: "B" }]
+answer: a
+```
+```mcf-question
+id: q20
+type: multiple_choice
+prompt: "Question 20"
+options: [{ id: a, text: "A" }, { id: b, text: "B" }]
+answer: a
+```
+```mcf-question
+id: q21
+type: multiple_choice
+prompt: "Question 21"
+options: [{ id: a, text: "A" }, { id: b, text: "B" }]
+answer: a
+```
+```mcf-question
+id: q22
+type: multiple_choice
+prompt: "Question 22"
+options: [{ id: a, text: "A" }, { id: b, text: "B" }]
+answer: a
+```
+```mcf-question
+id: q23
+type: multiple_choice
+prompt: "Question 23"
+options: [{ id: a, text: "A" }, { id: b, text: "B" }]
+answer: a
+```
+```mcf-question
+id: q24
+type: multiple_choice
+prompt: "Question 24"
+options: [{ id: a, text: "A" }, { id: b, text: "B" }]
+answer: a
+```
+
+:::mcf-end

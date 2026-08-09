@@ -3,7 +3,7 @@
 import { Brand } from "@theoria/ui";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AccountNavigation } from "./account-navigation";
 import { onboardingOpenEvent } from "./onboarding";
 import { ThemeControl } from "./theme-control";
@@ -29,9 +29,33 @@ export function PlatformHeader({
 }) {
   const pathname = usePathname();
   const mobileMenu = useRef<HTMLDetailsElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const closeMenu = useCallback((restoreFocus = false) => {
+    setMenuOpen(false);
+    if (restoreFocus)
+      mobileMenu.current?.querySelector<HTMLElement>("summary")?.focus();
+  }, []);
   useEffect(() => {
-    mobileMenu.current?.removeAttribute("open");
-  }, [pathname]);
+    closeMenu();
+  }, [pathname, closeMenu]);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const pointerDown = (event: PointerEvent) => {
+      if (!mobileMenu.current?.contains(event.target as Node)) closeMenu();
+    };
+    const keyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeMenu(true);
+      }
+    };
+    addEventListener("pointerdown", pointerDown);
+    addEventListener("keydown", keyDown);
+    return () => {
+      removeEventListener("pointerdown", pointerDown);
+      removeEventListener("keydown", keyDown);
+    };
+  }, [closeMenu, menuOpen]);
   const openHelp = () => dispatchEvent(new Event(onboardingOpenEvent));
   const links = (
     <>
@@ -44,7 +68,9 @@ export function PlatformHeader({
           {item.label}
         </Link>
       ))}
-      <Link href="/explore#search">Search</Link>
+      <Link className="search-navigation" href="/explore#search">
+        Search courses
+      </Link>
     </>
   );
   return (
@@ -54,9 +80,19 @@ export function PlatformHeader({
       <nav className="platform-primary" aria-label="Primary navigation">
         {links}
       </nav>
-      <details className="platform-mobile-menu" ref={mobileMenu}>
+      <details
+        className="platform-mobile-menu"
+        ref={mobileMenu}
+        open={menuOpen}
+        onToggle={(event) => setMenuOpen(event.currentTarget.open)}
+      >
         <summary>Menu</summary>
-        <nav aria-label="Mobile navigation">
+        <nav
+          aria-label="Mobile navigation"
+          onClick={(event) => {
+            if ((event.target as HTMLElement).closest("a")) closeMenu();
+          }}
+        >
           {links}
           <div className="platform-mobile-tools">
             {workspaceAction ? (
@@ -68,6 +104,9 @@ export function PlatformHeader({
             <button className="header-action" type="button" onClick={openHelp}>
               Help
             </button>
+            <div className="platform-mobile-account">
+              <AccountNavigation showSearch={false} />
+            </div>
           </div>
         </nav>
       </details>
@@ -81,7 +120,9 @@ export function PlatformHeader({
         <button className="header-action" type="button" onClick={openHelp}>
           Help
         </button>
-        <AccountNavigation showSearch={false} />
+        <div className="platform-desktop-account">
+          <AccountNavigation showSearch={false} />
+        </div>
       </div>
     </header>
   );

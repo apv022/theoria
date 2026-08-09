@@ -1,0 +1,30 @@
+---
+id: map-scale
+title: "Reading map scale"
+---
+
+:::mcf-activity
+type: notes
+id: scale-notes
+:::
+
+# A scale links two distances
+
+One centimetre on a map can represent one kilometre on the ground.
+
+:::mcf-end
+
+:::mcf-activity
+type: practice
+id: scale-practice
+:::
+
+```mcf-question
+id: scale-number
+type: numeric
+prompt: "How many kilometres does a 2.5 cm route represent?"
+answer: 2.5
+unit: km
+```
+
+:::mcf-end

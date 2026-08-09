@@ -1,0 +1,8 @@
+mcf: "1.1"
+kind: course
+id: minimal-course
+title: "Minimal MCF Course"
+language: en
+version: "1.1.0"
+chapters:
+  - source: chapters/start

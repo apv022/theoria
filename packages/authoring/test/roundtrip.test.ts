@@ -330,7 +330,10 @@ test("visual regeneration preserves TeX-rich YAML values through parse and re-ex
 
 test("visual metadata generation round-trips without phantom content", async () => {
   const original = await validatePackage(fixture("minimal-1.1.mcf.zip"));
-  if (!original.valid || !original.package) return;
+  assert.ok(
+    original.valid && original.package,
+    "minimal fixture must validate",
+  );
   const before = countPackage(original.package);
   const changed = updatePackageMetadata(original.package, {
     title: "Edited feature showcase",
@@ -360,17 +363,14 @@ test("visual metadata generation round-trips without phantom content", async () 
 });
 
 test("source-first imports preserve every byte, asset, kind, and literal marker", async () => {
-  const fixtures = [
-    fixture("minimal-1.1.mcf.zip"),
-    fixture("mcf-authoring-masterclass.mcf.zip"),
-  ];
+  const fixtures = [fixture("minimal-1.1.mcf.zip"), fixture("stress.mcf.zip")];
   for (const fixture of fixtures) {
     const archive = await readFile(fixture);
     const sourceFiles = extractSafeArchive(new Uint8Array(archive)).map(
       (file) => ({ path: file.path, bytes: bytes(file.bytes) }),
     );
     const parsed = await validatePackage(fixture);
-    if (!parsed.valid || !parsed.package) continue;
+    assert.ok(parsed.valid && parsed.package, `${fixture} must validate`);
     const counts = countPackage(parsed.package);
     const sourceArchive = createDeterministicArchive(
       sourceFiles.map((file) => ({
@@ -420,20 +420,22 @@ test("source-first imports preserve every byte, asset, kind, and literal marker"
     );
   }
 
-  const masterclass = await readFile(
-    fixture("mcf-authoring-masterclass.mcf.zip"),
-  );
-  const masterclassFiles = extractSafeArchive(new Uint8Array(masterclass));
-  if (!masterclassFiles.some((file) => file.path.endsWith(".mcf"))) return;
+  const stress = await readFile(fixture("stress.mcf.zip"));
+  const stressFiles = extractSafeArchive(new Uint8Array(stress));
   assert.ok(
-    masterclassFiles.some(
+    stressFiles.some((file) => file.path.endsWith(".mcf")),
+    "stress fixture must contain authored lessons",
+  );
+  assert.ok(
+    stressFiles.some(
       (file) =>
         file.path.endsWith(".mcf") &&
         fileText({
           path: file.path,
           kind: "text",
           bytes: bytes(file.bytes),
-        }).includes("    :::mcf-activity"),
+        }).includes("id: q24"),
     ),
+    "stress fixture must retain its complete question load",
   );
 });

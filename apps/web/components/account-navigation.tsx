@@ -10,7 +10,7 @@ export function AccountNavigation({
 }: {
   readonly showSearch?: boolean;
 }) {
-  const { configured, identity, loading, platform } = useAuth();
+  const { configured, event, identity, loading, platform } = useAuth();
   const [busy, setBusy] = useState(false);
 
   if (loading)
@@ -26,6 +26,8 @@ export function AccountNavigation({
         <Link href="/login">Sign in</Link>
         {!configured ? (
           <span className="account-local-label">Local mode</span>
+        ) : event === "unavailable" ? (
+          <span className="account-local-label">Account unavailable</span>
         ) : null}
       </nav>
     );
@@ -39,6 +41,7 @@ export function AccountNavigation({
         </summary>
         <div className="account-menu">
           <Link href={`/profiles/${identity.profile.handle}`}>Profile</Link>
+          <Link href="/repositories">My repositories</Link>
           <Link href="/stars">Starred courses</Link>
           <Link href="/settings">Settings</Link>
           <Button

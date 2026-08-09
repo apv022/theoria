@@ -57,9 +57,10 @@ corepack pnpm dev
 Open `http://localhost:3000`. Creation Studio is at `/studio`, the local library is at `/library`,
 and the compiler is at `/compile`.
 
-Accounts are optional. Copy `.env.example` to `.env.local` and provide only
-`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. Without them the app presents
-local mode and all compiler, library, reader, and Studio workflows continue to work.
+Accounts are optional. Copy `.env.example` to `.env.local` and provide
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and the canonical
+`NEXT_PUBLIC_SITE_URL`. Without Supabase credentials the app presents local mode and all compiler,
+library, reader, and Studio workflows continue to work.
 
 ## Verification
 

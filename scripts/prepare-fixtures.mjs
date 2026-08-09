@@ -8,107 +8,84 @@ import {
   stat,
   writeFile,
 } from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
+import { unzipSync, zipSync } from "fflate";
 
 const exec = promisify(execFile);
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
 );
-const defaultSources = {
-  mcf10: "/home/apv/mcf-samples/minimal",
-  mcf11Small: "/home/apv/examplecourses/archives/minimal.mcf.zip",
-  masterclass: "/home/apv/mcf-authoring-masterclass.mcf.zip",
-};
-const npmCli = "/home/apv/mcf-npm/dist/src/cli.js";
+const sourceRoot = path.join(projectRoot, "fixtures/sources");
+const validator = path.join(
+  projectRoot,
+  "packages/mcf-browser/node_modules/.bin/mcf",
+);
 
-let fallbackSources;
-async function ensureFallbackSources() {
-  if (fallbackSources) return fallbackSources;
-  const root = path.join(os.tmpdir(), "theoria-fixtures-fallback");
-  const minimal = path.join(root, "minimal");
-  await mkdir(minimal, { recursive: true });
-  await writeFile(
-    path.join(minimal, "manifest.yaml"),
-    "mcf: '1.0'\nkind: course\nid: minimal-1-0\ntitle: Minimal\n",
-  );
-  const smallDir = path.join(root, "small");
-  const masterDir = path.join(root, "master");
-  await mkdir(smallDir, { recursive: true });
-  await mkdir(masterDir, { recursive: true });
-  await writeFile(
-    path.join(smallDir, "manifest.yaml"),
-    "mcf: '1.1'\nkind: course\nid: minimal-1-1\ntitle: Minimal\n",
-  );
-  await writeFile(
-    path.join(masterDir, "manifest.yaml"),
-    "mcf: '1.1'\nkind: course\nid: masterclass\ntitle: Masterclass\n",
-  );
-  const small = path.join(root, "minimal.mcf.zip");
-  const master = path.join(root, "masterclass.mcf.zip");
-  await exec("zip", ["-q", "-j", small, path.join(smallDir, "manifest.yaml")]);
-  await exec("zip", [
-    "-q",
-    "-j",
-    master,
-    path.join(masterDir, "manifest.yaml"),
-  ]);
-  fallbackSources = { mcf10: minimal, mcf11Small: small, masterclass: master };
-  return fallbackSources;
-}
+const defaultFixtures = [
+  { source: "minimal-1.0", name: "minimal-1.0", packageType: "directory" },
+  {
+    source: "minimal-1.1",
+    name: "minimal-1.1.mcf.zip",
+    packageType: "archive",
+  },
+  {
+    source: "standalone-module",
+    name: "standalone-module.mcf.zip",
+    packageType: "archive",
+  },
+  {
+    source: "standalone-lesson",
+    name: "standalone-lesson.mcf.zip",
+    packageType: "archive",
+  },
+  {
+    source: "feature-showcase",
+    name: "feature-showcase.mcf.zip",
+    packageType: "archive",
+  },
+  { source: "stress", name: "stress.mcf.zip", packageType: "archive" },
+];
 
-export async function discoverFixtures(sources = defaultSources) {
-  const missing = await Promise.all(
-    Object.values(sources).map(async (source) => {
-      try {
-        await stat(source);
-        return false;
-      } catch {
-        return true;
-      }
-    }),
-  );
-  if (missing.some(Boolean)) sources = await ensureFallbackSources();
-  const selected = [
-    {
-      sourcePath: sources.mcf10,
-      name: "minimal-1.0",
-      packageType: "directory",
-    },
-    {
-      sourcePath: sources.mcf11Small,
-      name: "minimal-1.1.mcf.zip",
-      packageType: "archive",
-    },
-    {
-      sourcePath: sources.masterclass,
-      name: "mcf-authoring-masterclass.mcf.zip",
-      packageType: "archive",
-    },
-  ];
-  for (const fixture of selected) await stat(fixture.sourcePath);
-  return selected;
+async function filesOf(directory, prefix = "") {
+  const files = [];
+  const entries = await readdir(directory, { withFileTypes: true });
+  entries.sort((left, right) => left.name.localeCompare(right.name));
+  for (const entry of entries) {
+    const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
+    const target = path.join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...(await filesOf(target, relative)));
+    else if (entry.isFile())
+      files.push({ path: relative, bytes: await readFile(target) });
+  }
+  return files;
 }
 
 async function directorySize(directory) {
-  let total = 0;
-  for (const entry of await readdir(directory, { withFileTypes: true })) {
-    const target = path.join(directory, entry.name);
-    total += entry.isDirectory()
-      ? await directorySize(target)
-      : (await stat(target)).size;
-  }
-  return total;
+  return (await filesOf(directory)).reduce(
+    (total, file) => total + file.bytes.byteLength,
+    0,
+  );
+}
+
+async function createArchive(source, destination) {
+  const input = Object.fromEntries(
+    (await filesOf(source)).map((file) => [file.path, file.bytes]),
+  );
+  const archive = zipSync(input, {
+    level: 9,
+    mtime: new Date("1980-01-02T00:00:00.000Z"),
+  });
+  await writeFile(destination, archive);
 }
 
 async function archiveManifest(file) {
-  const { stdout } = await exec("unzip", ["-p", file, "manifest.yaml"], {
-    maxBuffer: 2 * 1024 * 1024,
-  });
-  return stdout;
+  const archive = unzipSync(new Uint8Array(await readFile(file)));
+  const manifest = archive["manifest.yaml"];
+  if (!manifest) throw new Error(`${file} does not contain manifest.yaml.`);
+  return new TextDecoder().decode(manifest);
 }
 
 export function manifestIdentity(source) {
@@ -119,66 +96,73 @@ export function manifestIdentity(source) {
   return { mcfVersion: mcf, packageKind: kind };
 }
 
+export async function discoverFixtures(fixtures = defaultFixtures) {
+  const discovered = fixtures.map((fixture) => ({
+    ...fixture,
+    sourcePath: path.join(sourceRoot, fixture.source),
+  }));
+  for (const fixture of discovered) {
+    const info = await stat(fixture.sourcePath);
+    if (!info.isDirectory())
+      throw new Error(`${fixture.sourcePath} must be a directory.`);
+    await stat(path.join(fixture.sourcePath, "manifest.yaml"));
+  }
+  return discovered;
+}
+
 async function validate(sourcePath) {
   try {
-    const { stdout, stderr } = await exec(
-      process.execPath,
-      [npmCli, "validate", sourcePath],
-      {
-        maxBuffer: 4 * 1024 * 1024,
-      },
-    );
+    const { stdout, stderr } = await exec(validator, ["validate", sourcePath], {
+      cwd: projectRoot,
+      maxBuffer: 4 * 1024 * 1024,
+    });
     return { status: "valid", detail: `${stdout}${stderr}`.trim() };
   } catch (error) {
-    if (error?.code === "ENOENT")
-      return {
-        status: "unavailable",
-        detail: "Existing mcf-npm CLI is unavailable.",
-      };
-    return {
-      status: "invalid",
-      detail:
-        `${error?.stdout ?? ""}${error?.stderr ?? error?.message ?? "Validation failed."}`.trim(),
-    };
+    const detail =
+      `${error?.stdout ?? ""}${error?.stderr ?? error?.message ?? "Validation failed."}`.trim();
+    throw new Error(`Fixture validation failed for ${sourcePath}: ${detail}`);
   }
 }
 
 export async function prepareFixtures({
   destination = path.join(projectRoot, "fixtures/local"),
-  sources = defaultSources,
+  fixtures = defaultFixtures,
 } = {}) {
-  const discovered = await discoverFixtures(sources);
+  const discovered = await discoverFixtures(fixtures);
   await rm(destination, { recursive: true, force: true });
   await mkdir(destination, { recursive: true });
   const entries = [];
   for (const fixture of discovered) {
-    const copiedPath = path.join(destination, fixture.name);
-    await cp(fixture.sourcePath, copiedPath, {
-      recursive: fixture.packageType === "directory",
-      force: true,
-    });
+    const output = path.join(destination, fixture.name);
+    if (fixture.packageType === "directory")
+      await cp(fixture.sourcePath, output, { recursive: true, force: true });
+    else await createArchive(fixture.sourcePath, output);
     const manifest =
       fixture.packageType === "directory"
-        ? await readFile(path.join(fixture.sourcePath, "manifest.yaml"), "utf8")
-        : await archiveManifest(fixture.sourcePath);
+        ? await readFile(path.join(output, "manifest.yaml"), "utf8")
+        : await archiveManifest(output);
     const identity = manifestIdentity(manifest);
-    const validation = await validate(fixture.sourcePath);
+    if (identity.mcfVersion === "unknown" || identity.packageKind === "unknown")
+      throw new Error(
+        `Fixture ${fixture.source} has an incomplete manifest identity.`,
+      );
+    const validation = await validate(output);
     entries.push({
-      sourcePath: fixture.sourcePath,
-      copiedPath: path.relative(projectRoot, copiedPath),
+      sourcePath: path.relative(projectRoot, fixture.sourcePath),
+      copiedPath: fixture.name,
       packageType: fixture.packageType,
       mcfVersion: identity.mcfVersion,
       packageKind: identity.packageKind,
       archiveSizeBytes:
         fixture.packageType === "directory"
-          ? await directorySize(fixture.sourcePath)
-          : (await stat(fixture.sourcePath)).size,
+          ? await directorySize(output)
+          : (await stat(output)).size,
       validation,
     });
   }
   const index = {
-    generatedAt: new Date().toISOString(),
-    compiler: npmCli,
+    schema: 1,
+    compiler: path.relative(projectRoot, validator),
     fixtures: entries,
   };
   await writeFile(
@@ -193,5 +177,7 @@ if (
   path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
   const index = await prepareFixtures();
-  console.log(`Prepared ${index.fixtures.length} fixtures in fixtures/local.`);
+  console.log(
+    `Prepared and validated ${index.fixtures.length} fixtures in fixtures/local.`,
+  );
 }

@@ -1,7 +1,7 @@
 import { defineConfig } from "@playwright/test";
 
 const authEnvironment =
-  "NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:55431 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_test";
+  "NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:55431 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_test NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3000";
 const serverCommand = `${authEnvironment} node scripts/test-web-server.mjs`;
 
 export default defineConfig({

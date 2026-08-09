@@ -193,9 +193,18 @@ export function SyncSettings() {
     );
   if (!identity)
     return (
-      <Notice title={event === "expired" ? "Session expired" : "Sign in first"}>
-        Queued work remains in this browser. Sign in again to resume without
-        deleting or rewriting local data.
+      <Notice
+        title={
+          event === "expired"
+            ? "Session expired"
+            : event === "unavailable"
+              ? "Account service unavailable"
+              : "Sign in first"
+        }
+      >
+        {event === "unavailable"
+          ? "Queued work remains in this browser. Synchronization will retry without deleting or rewriting local data."
+          : "Queued work remains in this browser. Sign in again to resume without deleting or rewriting local data."}
       </Notice>
     );
   if (!store || !engine)

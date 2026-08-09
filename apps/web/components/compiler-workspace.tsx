@@ -2,7 +2,6 @@
 
 import {
   WorkerMcfEngine,
-  extractCompiledIndex,
   type EngineOperation,
   type EngineProgress,
   type EngineResult,
@@ -25,6 +24,7 @@ import {
   type DragEvent,
 } from "react";
 import { SyncStatus } from "./sync-status";
+import { CompilerReaderPreview } from "./reader-experience";
 
 type SelectedSource =
   | { readonly type: "archive"; readonly file: File }
@@ -94,7 +94,7 @@ export function CompilerWorkspace() {
   const [progress, setProgress] = useState<EngineProgress>();
   const [result, setResult] = useState<EngineResult>();
   const [output, setOutput] = useState<Output>();
-  const [preview, setPreview] = useState<string>();
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [history, setHistory] = useState<readonly CompilationRecord[]>([]);
   const [dragging, setDragging] = useState(false);
   const lastOperation = useRef<EngineOperation>("validate");
@@ -131,7 +131,7 @@ export function CompilerWorkspace() {
       setSource({ type: "archive", file });
       setResult(undefined);
       setOutput(undefined);
-      setPreview(undefined);
+      setPreviewOpen(false);
     }
     event.target.value = "";
   };
@@ -144,7 +144,7 @@ export function CompilerWorkspace() {
       setSource({ type: "directory", name: root, files });
       setResult(undefined);
       setOutput(undefined);
-      setPreview(undefined);
+      setPreviewOpen(false);
     }
     event.target.value = "";
   };
@@ -157,7 +157,7 @@ export function CompilerWorkspace() {
       setSource({ type: "archive", file });
       setResult(undefined);
       setOutput(undefined);
-      setPreview(undefined);
+      setPreviewOpen(false);
     }
   };
 
@@ -170,7 +170,7 @@ export function CompilerWorkspace() {
       setProgress(undefined);
       setResult(undefined);
       setOutput(undefined);
-      setPreview(undefined);
+      setPreviewOpen(false);
       const input = await inputFromSource(source);
       const value = await engine.execute(
         { type: "request", requestId, operation, input },
@@ -183,7 +183,6 @@ export function CompilerWorkspace() {
         source.type === "archive" ? source.file.name : `${source.name}.mcf.zip`;
       setOutput({ result: value, sourceName });
       if (value.compiledArtifact) {
-        setPreview(extractCompiledIndex(value.compiledArtifact));
         const now = new Date().toISOString();
         const record: CompilationRecord = {
           id: crypto.randomUUID(),
@@ -287,7 +286,7 @@ export function CompilerWorkspace() {
       compilationId: record.id,
     });
     setResult(synthetic);
-    setPreview(extractCompiledIndex(artifact));
+    setPreviewOpen(false);
   };
 
   const addOutputToLibrary = async () => {
@@ -492,6 +491,11 @@ export function CompilerWorkspace() {
                 </div>
               </div>
               <div className="actions">
+                {output?.result.sourceFiles.length ? (
+                  <Button onClick={() => setPreviewOpen(true)}>
+                    Preview in Reader
+                  </Button>
+                ) : null}
                 {output ? (
                   <Button
                     className="button-secondary"
@@ -561,26 +565,31 @@ export function CompilerWorkspace() {
         </section>
       ) : null}
 
-      {preview ? (
+      {previewOpen && output ? (
         <section
-          className="compiler-panel preview-panel"
-          aria-labelledby="preview-heading"
+          className="compiler-reader-preview"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="compiler-reader-preview-heading"
         >
-          <div className="panel-heading">
-            <span>04</span>
+          <header>
             <div>
-              <p>Isolated output</p>
-              <h2 id="preview-heading">Preview</h2>
+              <p className="section-label">Reader preview</p>
+              <h2 id="compiler-reader-preview-heading">
+                {output.result.summary.manifest.title}
+              </h2>
             </div>
-          </div>
-          <p className="preview-note">
-            The compiled document runs in a sandboxed, opaque-origin frame
-            without same-origin access.
-          </p>
-          <iframe
-            title="Compiled package preview"
-            sandbox="allow-scripts"
-            srcDoc={preview}
+            <Button
+              className="button-secondary"
+              onClick={() => setPreviewOpen(false)}
+            >
+              Close preview
+            </Button>
+          </header>
+          <CompilerReaderPreview
+            readerPackage={output.result.readerPackage}
+            sourceFiles={output.result.sourceFiles}
+            sourceChecksum={output.result.summary.sourceChecksum}
           />
         </section>
       ) : null}

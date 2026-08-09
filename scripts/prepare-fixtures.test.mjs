@@ -1,17 +1,13 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import {
   discoverFixtures,
   manifestIdentity,
   prepareFixtures,
 } from "./prepare-fixtures.mjs";
-
-const exec = promisify(execFile);
 
 test("manifest identity distinguishes MCF 1.0 and 1.1 defaults", () => {
   assert.deepEqual(manifestIdentity("mcf: '1.0'\nid: sample"), {
@@ -24,50 +20,44 @@ test("manifest identity distinguishes MCF 1.0 and 1.1 defaults", () => {
   });
 });
 
-test("fixture discovery requires all three representative sources", async () => {
+test("fixture discovery is repository-owned and representative", async () => {
   const fixtures = await discoverFixtures();
-  assert.equal(fixtures.length, 3);
-  assert.ok(fixtures.some((item) => item.name.includes("1.0")));
-  assert.ok(fixtures.some((item) => item.name.includes("1.1")));
-  assert.ok(fixtures.some((item) => item.name.includes("masterclass")));
+  assert.deepEqual(
+    fixtures.map((item) => item.source),
+    [
+      "minimal-1.0",
+      "minimal-1.1",
+      "standalone-module",
+      "standalone-lesson",
+      "feature-showcase",
+      "stress",
+    ],
+  );
+  assert.ok(
+    fixtures.every((item) => item.sourcePath.includes("fixtures/sources/")),
+  );
 });
 
-test("preparation copies sources and writes a truthful index", async (context) => {
+test("preparation generates deterministic, valid fixtures", async (context) => {
   const temporary = await mkdtemp(path.join(os.tmpdir(), "theoria-fixtures-"));
   context.after(() => rm(temporary, { recursive: true, force: true }));
-  const one = path.join(temporary, "one");
-  await mkdir(one);
-  await writeFile(path.join(one, "manifest.yaml"), "mcf: '1.0'\nid: one\n");
-  const smallSource = path.join(temporary, "small");
-  const masterSource = path.join(temporary, "master");
-  await mkdir(smallSource);
-  await mkdir(masterSource);
-  await writeFile(
-    path.join(smallSource, "manifest.yaml"),
-    "mcf: '1.1'\nkind: course\n",
+  const first = path.join(temporary, "first");
+  const second = path.join(temporary, "second");
+  const firstIndex = await prepareFixtures({ destination: first });
+  const secondIndex = await prepareFixtures({ destination: second });
+  assert.equal(firstIndex.fixtures.length, 6);
+  assert.ok(
+    firstIndex.fixtures.every((item) => item.validation.status === "valid"),
   );
-  await writeFile(
-    path.join(masterSource, "manifest.yaml"),
-    "mcf: '1.1'\nkind: course\n",
-  );
-  const small = path.join(temporary, "small.mcf.zip");
-  const master = path.join(temporary, "master.mcf.zip");
-  await exec("zip", ["-q", "-r", small, "manifest.yaml"], { cwd: smallSource });
-  await exec("zip", ["-q", "-r", master, "manifest.yaml"], {
-    cwd: masterSource,
-  });
-  const destination = path.join(temporary, "output");
-  const index = await prepareFixtures({
-    destination,
-    sources: { mcf10: one, mcf11Small: small, masterclass: master },
-  });
-  assert.equal(index.fixtures.length, 3);
-  const disk = JSON.parse(
-    await readFile(path.join(destination, "index.json"), "utf8"),
-  );
-  assert.deepEqual(
-    disk.fixtures.map((item) => item.mcfVersion),
-    ["1.0", "1.1", "1.1"],
-  );
-  assert.ok(disk.fixtures.every((item) => item.archiveSizeBytes > 0));
+  assert.deepEqual(firstIndex, secondIndex);
+  for (const fixture of firstIndex.fixtures) {
+    if (fixture.packageType !== "archive") continue;
+    const firstBytes = await readFile(
+      path.join(first, path.basename(fixture.copiedPath)),
+    );
+    const secondBytes = await readFile(
+      path.join(second, path.basename(fixture.copiedPath)),
+    );
+    assert.deepEqual(firstBytes, secondBytes);
+  }
 });

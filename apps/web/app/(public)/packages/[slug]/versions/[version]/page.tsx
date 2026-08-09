@@ -14,7 +14,29 @@ export default async function PackageVersionPage({
 }) {
   const { slug, version } = await params;
   const platform = await serverPlatformClient();
-  const release = await platform.repository.getVersion(slug, version);
+  if (!platform.authentication.configured)
+    return (
+      <div className="page-wrap narrow-page">
+        <h1>{slug.replaceAll("-", " ")}</h1>
+        <Notice title="Repository is not configured">
+          Local Studio, Library, Reader, and exports remain fully available.
+        </Notice>
+      </div>
+    );
+  let release;
+  try {
+    release = await platform.repository.getVersion(slug, version);
+  } catch {
+    return (
+      <div className="page-wrap narrow-page">
+        <h1>Version unavailable</h1>
+        <Notice title="Package service unavailable">
+          This release could not be loaded. Local workflows remain available;
+          reload to retry.
+        </Notice>
+      </div>
+    );
+  }
   if (!release)
     return (
       <div className="page-wrap narrow-page">
@@ -26,7 +48,12 @@ export default async function PackageVersionPage({
       </div>
     );
   const manifest = release.version.manifestSummary;
-  const network = await platform.repository.getNetwork(release.package.id);
+  let network;
+  try {
+    network = await platform.repository.getNetwork(release.package.id);
+  } catch {
+    network = undefined;
+  }
   const formatBytes = (bytes: number) =>
     bytes < 1024
       ? `${bytes} B`

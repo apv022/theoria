@@ -23,11 +23,22 @@ export function AccountSettings() {
   if (!identity)
     return (
       <>
-        <Notice title={event === "expired" ? "Session expired" : "Signed out"}>
-          Sign in to manage account data. Your local learning and creation data
-          remains available without an account.
+        <Notice
+          title={
+            event === "expired"
+              ? "Session expired"
+              : event === "unavailable"
+                ? "Account service unavailable"
+                : "Signed out"
+          }
+        >
+          {event === "unavailable"
+            ? "Your session could not be checked. Reload to retry; local learning and creation data remains available."
+            : "Sign in to manage account data. Your local learning and creation data remains available without an account."}
         </Notice>
-        <LinkButton href="/login?next=/settings">Sign in</LinkButton>
+        {event !== "unavailable" ? (
+          <LinkButton href="/login?next=/settings">Sign in</LinkButton>
+        ) : null}
       </>
     );
 

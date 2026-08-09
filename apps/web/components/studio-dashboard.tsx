@@ -265,7 +265,8 @@ export function StudioDashboard() {
         <p className="section-label">Local-first creation</p>
         <h1>Creation Studio</h1>
         <p>
-          Build, validate, preview, and export portable MCF without an account.
+          Create, preview, validate, and export portable learning packages
+          without an account.
         </p>
       </header>
 
@@ -287,7 +288,10 @@ export function StudioDashboard() {
       <section className="studio-create" aria-labelledby="create-heading">
         <div>
           <p className="section-label">New package</p>
-          <h2 id="create-heading">Start with valid MCF 1.1 source.</h2>
+          <h2 id="create-heading">Start a course or import existing work.</h2>
+          <p className="technical-note">
+            Studio creates and imports valid MCF 1.1 source packages.
+          </p>
         </div>
         <label className="field">
           <span>Package title</span>
@@ -428,8 +432,10 @@ export function StudioDashboard() {
             <span className="empty-mark" aria-hidden="true">
               ✦
             </span>
-            <h2>No drafts yet.</h2>
-            <p>Create a package or import a validated source archive.</p>
+            <h2>No drafts on this device yet.</h2>
+            <p>
+              Courses you create or import will appear here for your next visit.
+            </p>
           </div>
         )}
       </section>

@@ -1,6 +1,10 @@
 "use client";
 
-import { WorkerMcfEngine, type SerializedFile } from "@theoria/mcf-browser";
+import {
+  WorkerMcfEngine,
+  type ReaderPackage,
+  type SerializedFile,
+} from "@theoria/mcf-browser";
 import { IndexedDbLocalStore } from "@theoria/local-store";
 import {
   packageId as asPackageId,
@@ -115,10 +119,12 @@ function Rubric({
   rubricId,
   lesson,
   course,
+  resolveAsset,
 }: {
   readonly rubricId: string | undefined;
   readonly lesson: ReturnType<typeof lessonsOf>[number];
   readonly course: ReaderStructure;
+  readonly resolveAsset: AssetResolver;
 }) {
   const rubric = rubricId
     ? ((lesson.rubrics ?? []).find((item) => item.id === rubricId) ??
@@ -128,7 +134,14 @@ function Rubric({
   return (
     <section className="reader-rubric" aria-labelledby={`rubric-${rubric.id}`}>
       <h4 id={`rubric-${rubric.id}`}>{rubric.title}</h4>
-      {rubric.description ? <p>{rubric.description}</p> : null}
+      {rubric.description ? (
+        <RichContent
+          source={rubric.description}
+          lesson={lesson}
+          course={course}
+          resolveAsset={resolveAsset}
+        />
+      ) : null}
       <div className="rubric-scroll">
         <table>
           <thead>
@@ -140,12 +153,25 @@ function Rubric({
           <tbody>
             {rubric.criteria.map((criterion) => (
               <tr key={criterion.id}>
-                <th scope="row">{criterion.description}</th>
+                <th scope="row">
+                  <RichContent
+                    source={criterion.description}
+                    lesson={lesson}
+                    course={course}
+                    resolveAsset={resolveAsset}
+                  />
+                </th>
                 <td>
                   <ul>
                     {criterion.levels.map((level) => (
                       <li key={level.id}>
-                        {level.description} — {level.points} points
+                        <RichContent
+                          source={level.description}
+                          lesson={lesson}
+                          course={course}
+                          resolveAsset={resolveAsset}
+                        />
+                        <span>{level.points} points</span>
                       </li>
                     ))}
                   </ul>
@@ -163,18 +189,24 @@ function Rubric({
 function OrderingControl({
   question,
   value,
+  state,
+  lesson,
+  course,
+  resolveAsset,
   onChange,
 }: {
   readonly question: ReaderQuestion;
   readonly value: unknown;
+  readonly state: LearnerQuestionState | undefined;
+  readonly lesson: ReturnType<typeof lessonsOf>[number];
+  readonly course: ReaderStructure;
+  readonly resolveAsset: AssetResolver;
   readonly onChange: (value: unknown) => void;
 }) {
   const ids = Array.isArray(value)
     ? (value as string[])
     : (question.items ?? []).map((item) => item.id);
-  const labels = new Map(
-    (question.items ?? []).map((item) => [item.id, item.text]),
-  );
+  const items = new Map((question.items ?? []).map((item) => [item.id, item]));
   const move = (index: number, direction: -1 | 1) => {
     const target = index + direction;
     if (target < 0 || target >= ids.length) return;
@@ -188,11 +220,32 @@ function OrderingControl({
     <ol className="ordering-control" aria-label="Items to order">
       {ids.map((id, index) => (
         <li key={id}>
-          <span>{labels.get(id) ?? id}</span>
-          <span>
+          <div id={`ordering-${question.id}-${id}`}>
+            <RichContent
+              source={items.get(id)?.text ?? id}
+              lesson={lesson}
+              course={course}
+              resolveAsset={resolveAsset}
+            />
+            {state?.checked &&
+            items.get(id) &&
+            "feedback" in items.get(id)! &&
+            typeof items.get(id)!.feedback === "string" ? (
+              <div className="reader-option-feedback">
+                <RichContent
+                  source={String(items.get(id)!.feedback)}
+                  lesson={lesson}
+                  course={course}
+                  resolveAsset={resolveAsset}
+                />
+              </div>
+            ) : null}
+          </div>
+          <span className="actions">
             <Button
               className="button-secondary"
-              aria-label={`Move ${labels.get(id) ?? id} up`}
+              aria-label={`Move item ${index + 1} up`}
+              aria-describedby={`ordering-${question.id}-${id}`}
               disabled={index === 0}
               onClick={() => move(index, -1)}
             >
@@ -200,7 +253,8 @@ function OrderingControl({
             </Button>
             <Button
               className="button-secondary"
-              aria-label={`Move ${labels.get(id) ?? id} down`}
+              aria-label={`Move item ${index + 1} down`}
+              aria-describedby={`ordering-${question.id}-${id}`}
               disabled={index === ids.length - 1}
               onClick={() => move(index, 1)}
             >
@@ -218,12 +272,18 @@ function QuestionControl({
   state,
   matchingOrder,
   orderingOrder,
+  lesson,
+  course,
+  resolveAsset,
   onChange,
 }: {
   readonly question: ReaderQuestion;
   readonly state: LearnerQuestionState | undefined;
   readonly matchingOrder: readonly string[] | undefined;
   readonly orderingOrder: readonly string[] | undefined;
+  readonly lesson: ReturnType<typeof lessonsOf>[number];
+  readonly course: ReaderStructure;
+  readonly resolveAsset: AssetResolver;
   readonly onChange: (value: unknown) => void;
 }) {
   const response = state?.response;
@@ -235,85 +295,149 @@ function QuestionControl({
             { id: "false", text: "False" },
           ]
         : (question.options ?? []);
-    return options.map((option) => (
-      <label className="reader-option" key={option.id}>
-        <input
-          type="radio"
-          name={question.id}
-          value={option.id}
-          checked={response === option.id}
-          onChange={(event) => onChange(event.target.value)}
-        />
-        <span>{option.text}</span>
-        {"feedback" in option &&
-        option.feedback &&
-        state?.checked &&
-        response === option.id ? (
-          <small>{option.feedback}</small>
-        ) : null}
-      </label>
-    ));
+    return options.map((option) => {
+      const inputId = `${question.id}-${option.id}`;
+      return (
+        <div className="reader-option" key={option.id}>
+          <input
+            id={inputId}
+            type="radio"
+            name={question.id}
+            value={option.id}
+            checked={response === option.id}
+            onChange={(event) => onChange(event.target.value)}
+          />
+          <label htmlFor={inputId}>
+            <RichContent
+              source={option.text}
+              lesson={lesson}
+              course={course}
+              resolveAsset={resolveAsset}
+            />
+          </label>
+          {"feedback" in option &&
+          option.feedback &&
+          state?.checked &&
+          response === option.id ? (
+            <div className="reader-option-feedback">
+              <RichContent
+                source={option.feedback}
+                lesson={lesson}
+                course={course}
+                resolveAsset={resolveAsset}
+              />
+            </div>
+          ) : null}
+        </div>
+      );
+    });
   }
   if (question.type === "multiple_select") {
     const selected = Array.isArray(response) ? (response as string[]) : [];
-    return (question.options ?? []).map((option) => (
-      <label className="reader-option" key={option.id}>
-        <input
-          type="checkbox"
-          value={option.id}
-          checked={selected.includes(option.id)}
-          onChange={(event) =>
-            onChange(
-              event.target.checked
-                ? [...selected, option.id]
-                : selected.filter((id) => id !== option.id),
-            )
-          }
-        />
-        <span>{option.text}</span>
-        {option.feedback && state?.checked && selected.includes(option.id) ? (
-          <small>{option.feedback}</small>
-        ) : null}
-      </label>
-    ));
+    return (question.options ?? []).map((option) => {
+      const inputId = `${question.id}-${option.id}`;
+      return (
+        <div className="reader-option" key={option.id}>
+          <input
+            id={inputId}
+            type="checkbox"
+            value={option.id}
+            checked={selected.includes(option.id)}
+            onChange={(event) =>
+              onChange(
+                event.target.checked
+                  ? [...selected, option.id]
+                  : selected.filter((id) => id !== option.id),
+              )
+            }
+          />
+          <label htmlFor={inputId}>
+            <RichContent
+              source={option.text}
+              lesson={lesson}
+              course={course}
+              resolveAsset={resolveAsset}
+            />
+          </label>
+          {option.feedback && state?.checked && selected.includes(option.id) ? (
+            <div className="reader-option-feedback">
+              <RichContent
+                source={option.feedback}
+                lesson={lesson}
+                course={course}
+                resolveAsset={resolveAsset}
+              />
+            </div>
+          ) : null}
+        </div>
+      );
+    });
   }
   if (question.type === "matching") {
     const value =
       response && typeof response === "object" && !Array.isArray(response)
         ? (response as Record<string, string>)
         : {};
-    const labels = new Map(
-      (question.responses ?? []).map((item) => [item.id, item.text]),
+    const responses = new Map(
+      (question.responses ?? []).map((item) => [item.id, item]),
     );
     const selected = new Set(Object.values(value).filter(Boolean));
     return (
       <div className="matching-control">
         {(question.premises ?? []).map((premise) => (
-          <label key={premise.id}>
-            <span>{premise.text}</span>
-            <select
-              aria-label={`Match ${premise.text}`}
-              value={value[premise.id] ?? ""}
-              onChange={(event) =>
-                onChange({ ...value, [premise.id]: event.target.value })
-              }
-            >
-              <option value="">Choose…</option>
+          <fieldset className="matching-premise" key={premise.id}>
+            <legend>
+              <RichContent
+                source={premise.text}
+                lesson={lesson}
+                course={course}
+                resolveAsset={resolveAsset}
+              />
+            </legend>
+            <div className="matching-responses">
               {(matchingOrder ?? []).map((id) => (
-                <option
-                  key={id}
-                  value={id}
-                  disabled={
-                    !question.reuse_responses &&
-                    id !== value[premise.id] &&
-                    selected.has(id)
-                  }
-                >
-                  {labels.get(id) ?? id}
-                </option>
+                <div className="reader-option" key={id}>
+                  <input
+                    id={`${question.id}-${premise.id}-${id}`}
+                    type="radio"
+                    name={`${question.id}-${premise.id}`}
+                    value={id}
+                    checked={value[premise.id] === id}
+                    disabled={
+                      !question.reuse_responses &&
+                      id !== value[premise.id] &&
+                      selected.has(id)
+                    }
+                    onChange={(event) =>
+                      onChange({ ...value, [premise.id]: event.target.value })
+                    }
+                  />
+                  <label htmlFor={`${question.id}-${premise.id}-${id}`}>
+                    <RichContent
+                      source={responses.get(id)?.text ?? id}
+                      lesson={lesson}
+                      course={course}
+                      resolveAsset={resolveAsset}
+                    />
+                  </label>
+                  {state?.checked &&
+                  value[premise.id] === id &&
+                  responses.get(id) &&
+                  "feedback" in responses.get(id)! &&
+                  typeof responses.get(id)!.feedback === "string" ? (
+                    <div className="reader-option-feedback">
+                      <RichContent
+                        source={String(responses.get(id)!.feedback)}
+                        lesson={lesson}
+                        course={course}
+                        resolveAsset={resolveAsset}
+                      />
+                    </div>
+                  ) : null}
+                </div>
               ))}
-            </select>
-          </label>
+            </div>
+          </fieldset>
         ))}
       </div>
     );
@@ -323,6 +447,10 @@ function QuestionControl({
       <OrderingControl
         question={question}
         value={response ?? orderingOrder}
+        state={state}
+        lesson={lesson}
+        course={course}
+        resolveAsset={resolveAsset}
         onChange={onChange}
       />
     );
@@ -408,6 +536,9 @@ function QuestionView({
           state={state}
           matchingOrder={progress.matchingOrders[key]}
           orderingOrder={progress.orderingOrders[key]}
+          lesson={lesson}
+          course={course}
+          resolveAsset={resolveAsset}
           onChange={update}
         />
       </div>
@@ -445,9 +576,14 @@ function QuestionView({
         </div>
       ) : null}
       {message ? (
-        <p className="reader-feedback" aria-live="polite">
-          {message}
-        </p>
+        <div className="reader-feedback" aria-live="polite">
+          <RichContent
+            source={message}
+            lesson={lesson}
+            course={course}
+            resolveAsset={resolveAsset}
+          />
+        </div>
       ) : null}
       {state?.checked && question.explanation ? (
         <div className="reader-explanation">
@@ -470,7 +606,12 @@ function QuestionView({
           This response is ungraded and saved without correctness evaluation.
         </p>
       ) : null}
-      <Rubric rubricId={question.rubric} lesson={lesson} course={course} />
+      <Rubric
+        rubricId={question.rubric}
+        lesson={lesson}
+        course={course}
+        resolveAsset={resolveAsset}
+      />
     </section>
   );
 }
@@ -689,7 +830,12 @@ function ActivityView({
           onProgress={onProgress}
         />
       ) : null}
-      <Rubric rubricId={activity.rubric} lesson={lesson} course={course} />
+      <Rubric
+        rubricId={activity.rubric}
+        lesson={lesson}
+        course={course}
+        resolveAsset={resolveAsset}
+      />
     </section>
   );
 }
@@ -705,6 +851,265 @@ type ReaderStatus =
       readonly resolveAsset: AssetResolver;
     };
 
+const previewProgress = (
+  course: ReaderStructure,
+  sourceChecksum: string,
+): LearnerProgress => {
+  let progress = compatibleProgress(
+    undefined,
+    asPackageId(`compiler-preview:${course.id}:${course.version}`),
+    sourceChecksum,
+    course,
+  );
+  for (const lesson of lessonsOf(course)) {
+    for (const activity of lesson.activities)
+      progress = prepareActivity(progress, lesson.id, activity).state;
+  }
+  return progress;
+};
+
+export function CompilerReaderPreview({
+  readerPackage,
+  sourceFiles,
+  sourceChecksum,
+}: {
+  readonly readerPackage: ReaderPackage;
+  readonly sourceFiles: readonly SerializedFile[];
+  readonly sourceChecksum: string;
+}) {
+  const course = useMemo(
+    () => toReaderStructure(readerPackage),
+    [readerPackage],
+  );
+  const assets = useMemo(() => createAssets(sourceFiles), [sourceFiles]);
+  const [progress, setProgress] = useState<LearnerProgress | undefined>();
+  const [lessonId, setLessonId] = useState<string>();
+
+  useEffect(() => () => assets.revoke(), [assets]);
+  useEffect(() => {
+    if (!course) return;
+    const next = previewProgress(course, sourceChecksum);
+    setProgress(next);
+    setLessonId(lessonsOf(course)[0]?.id);
+  }, [course, sourceChecksum]);
+
+  if (!course)
+    return (
+      <div className="reader-error" role="alert">
+        <h2>Preview unavailable</h2>
+        <p>This package cannot be rendered as a learner course.</p>
+      </div>
+    );
+  if (!progress || !lessonId)
+    return (
+      <div className="reader-loading" aria-busy="true">
+        <h2>Preparing Reader preview…</h2>
+      </div>
+    );
+  return (
+    <ReaderCoursePresentation
+      course={course}
+      progress={progress}
+      resolveAsset={assets.resolve}
+      currentLessonId={lessonId}
+      mode="preview"
+      onProgress={setProgress}
+      onLessonChange={setLessonId}
+    />
+  );
+}
+
+function ReaderCoursePresentation({
+  course,
+  progress,
+  resolveAsset,
+  currentLessonId,
+  mode,
+  onProgress,
+  onLessonChange,
+}: {
+  readonly course: ReaderStructure;
+  readonly progress: LearnerProgress;
+  readonly resolveAsset: AssetResolver;
+  readonly currentLessonId: string;
+  readonly mode: "reader" | "preview";
+  readonly onProgress: (next: LearnerProgress) => void;
+  readonly onLessonChange: (lessonId: string) => void;
+}) {
+  const [outlineOpen, setOutlineOpen] = useState(false);
+  const lessons = lessonsOf(course);
+  const current =
+    lessons.find((lesson) => lesson.id === currentLessonId) ?? lessons[0]!;
+  const index = lessons.findIndex((lesson) => lesson.id === current.id);
+  const percentage = coursePercent(course, progress);
+
+  useEffect(() => {
+    let next = progress;
+    for (const activity of current.activities)
+      next = markActivityViewed(next, current.id, activity);
+    if (next !== progress) onProgress(next);
+  }, [current, onProgress, progress]);
+
+  const lessonLink = (lesson: ReturnType<typeof lessonsOf>[number]) =>
+    mode === "reader" ? (
+      <Link
+        key={lesson.id}
+        href={`/read/${encodeURIComponent(progress.packageId)}/${encodeURIComponent(lesson.id)}`}
+        aria-current={lesson.id === current.id ? "page" : undefined}
+        className={progress.lessons[lesson.id] ? "complete" : ""}
+        onClick={(event) => {
+          if (typeof navigator !== "undefined" && !navigator.onLine) {
+            event.preventDefault();
+            onLessonChange(lesson.id);
+          }
+        }}
+      >
+        <span aria-hidden="true">
+          {progress.lessons[lesson.id]
+            ? "✓"
+            : lesson.id === current.id
+              ? "→"
+              : "·"}
+        </span>
+        {lesson.title}
+      </Link>
+    ) : (
+      <button
+        key={lesson.id}
+        type="button"
+        aria-current={lesson.id === current.id ? "page" : undefined}
+        className={progress.lessons[lesson.id] ? "complete" : ""}
+        onClick={() => {
+          setOutlineOpen(false);
+          onLessonChange(lesson.id);
+        }}
+      >
+        <span aria-hidden="true">
+          {progress.lessons[lesson.id]
+            ? "✓"
+            : lesson.id === current.id
+              ? "→"
+              : "·"}
+        </span>
+        {lesson.title}
+      </button>
+    );
+
+  const lessonAction = (
+    lesson: ReturnType<typeof lessonsOf>[number],
+    direction: "previous" | "next",
+  ) =>
+    mode === "reader" ? (
+      <Link
+        className={`button${direction === "previous" ? " button-secondary" : ""}`}
+        href={`/read/${encodeURIComponent(progress.packageId)}/${encodeURIComponent(lesson.id)}`}
+        onClick={(event) => {
+          if (typeof navigator !== "undefined" && !navigator.onLine) {
+            event.preventDefault();
+            onLessonChange(lesson.id);
+          }
+        }}
+      >
+        {direction === "previous" ? "← " : ""}
+        {lesson.title}
+        {direction === "next" ? " →" : ""}
+      </Link>
+    ) : (
+      <Button
+        className={direction === "previous" ? "button-secondary" : undefined}
+        onClick={() => onLessonChange(lesson.id)}
+      >
+        {direction === "previous" ? "← " : ""}
+        {lesson.title}
+        {direction === "next" ? " →" : ""}
+      </Button>
+    );
+
+  return (
+    <div className="active-reader" data-reader-context={mode}>
+      <aside className="reader-course-nav">
+        <div className="reader-package-title">
+          <p>
+            {course.kind} · MCF {course.mcf}
+          </p>
+          <h1>{course.title}</h1>
+          <div
+            className="reader-progress-bar"
+            aria-label={`${percentage}% complete`}
+          >
+            <i style={{ width: `${percentage}%` }} />
+          </div>
+          <strong>{percentage}% complete</strong>
+          {mode === "reader" ? (
+            <SyncStatus category="progress" stableId={progress.packageId} />
+          ) : null}
+        </div>
+        <button
+          className="reader-outline-toggle"
+          type="button"
+          aria-expanded={outlineOpen}
+          aria-controls="reader-package-contents"
+          onClick={() => setOutlineOpen((value) => !value)}
+        >
+          Course outline
+          <span aria-hidden="true">{outlineOpen ? "−" : "+"}</span>
+        </button>
+        <nav
+          id="reader-package-contents"
+          className={`reader-outline-nav${outlineOpen ? " open" : ""}`}
+          aria-label="Package contents"
+        >
+          {course.chapters.map((chapter) => (
+            <section key={chapter.id}>
+              <h2>{chapter.title}</h2>
+              {chapter.lessons.map(lessonLink)}
+            </section>
+          ))}
+        </nav>
+      </aside>
+      <article className="reader-lesson" id="lesson">
+        <header>
+          <p className="chapter-label">
+            Lesson {index + 1} of {lessons.length}
+          </p>
+          <h1>{current.title}</h1>
+          {current.description ? <p>{current.description}</p> : null}
+          {progress.lessons[current.id] ? (
+            <Status tone="positive">Lesson complete</Status>
+          ) : null}
+        </header>
+        {current.activities.map((activity) => (
+          <ActivityView
+            key={activity.id}
+            activity={activity}
+            lesson={current}
+            course={course}
+            progress={progress}
+            resolveAsset={resolveAsset}
+            onProgress={onProgress}
+          />
+        ))}
+        <nav className="reader-lesson-nav" aria-label="Lesson navigation">
+          {lessons[index - 1] ? (
+            lessonAction(lessons[index - 1]!, "previous")
+          ) : (
+            <span />
+          )}
+          {lessons[index + 1] ? (
+            lessonAction(lessons[index + 1]!, "next")
+          ) : mode === "reader" ? (
+            <Link className="button" href="/library">
+              Return to library
+            </Link>
+          ) : (
+            <span className="preview-complete">End of preview</span>
+          )}
+        </nav>
+      </article>
+    </div>
+  );
+}
+
 export function ReaderExperience({
   packageId,
   lessonId,
@@ -717,10 +1122,13 @@ export function ReaderExperience({
   const router = useRouter();
   const engine = useMemo(() => new WorkerMcfEngine(), []);
   const [status, setStatus] = useState<ReaderStatus>({ state: "loading" });
+  const [offlineLessonId, setOfflineLessonId] = useState<string>();
+  const [previewLessonId, setPreviewLessonId] = useState<string>();
 
   useEffect(() => {
     let active = true;
     let revoke = () => {};
+    setStatus({ state: "loading" });
     const load = async () => {
       if (!store) {
         setStatus({
@@ -814,13 +1222,14 @@ export function ReaderExperience({
         currentLessonId: requested,
         lastOpenedAt: new Date().toISOString(),
       });
-      await Promise.all([
-        store.progress.put(progress),
-        store.library.put({
-          ...entry,
-          lastOpenedAt: new Date().toISOString(),
-        }),
-      ]);
+      if (mode === "reader")
+        await Promise.all([
+          store.progress.put(progress),
+          store.library.put({
+            ...entry,
+            lastOpenedAt: new Date().toISOString(),
+          }),
+        ]);
       if (!active) return;
       setStatus({
         state: "ready",
@@ -829,12 +1238,10 @@ export function ReaderExperience({
         progress,
         resolveAsset: assets.resolve,
       });
-      if (!lessonId) {
-        const base = mode === "preview" ? "/preview" : "/read";
+      if (!lessonId && mode === "reader")
         router.replace(
-          `${base}/${encodeURIComponent(packageId)}/${encodeURIComponent(requested)}`,
+          `/read/${encodeURIComponent(packageId)}/${encodeURIComponent(requested)}`,
         );
-      }
     };
     void load().catch((reason) => {
       if (active)
@@ -851,16 +1258,16 @@ export function ReaderExperience({
       revoke();
       engine.dispose();
     };
-  }, [engine, lessonId, mode, packageId, router]);
+  }, [engine, mode, packageId, router]);
 
   const commit = useCallback(
     (next: LearnerProgress) => {
       if (status.state !== "ready" || !store) return;
       const complete = refreshAllCompletion(status.course, next);
       setStatus({ ...status, progress: complete });
-      void store.progress.put(complete);
+      if (mode === "reader") void store.progress.put(complete);
     },
-    [status],
+    [mode, status],
   );
 
   const offlineCourse = status.state === "ready" ? status.course : undefined;
@@ -880,18 +1287,6 @@ export function ReaderExperience({
       registration.active?.postMessage({ type: "CACHE_URLS", urls });
     });
   }, [mode, offlineCourse, packageId]);
-
-  useEffect(() => {
-    if (status.state !== "ready") return;
-    const lesson = lessonsOf(status.course).find(
-      (item) => item.id === (lessonId ?? status.progress.currentLessonId),
-    );
-    if (!lesson) return;
-    let next = status.progress;
-    for (const activity of lesson.activities)
-      next = markActivityViewed(next, lesson.id, activity);
-    if (next !== status.progress) commit(next);
-  }, [commit, lessonId, status]);
 
   if (status.state === "loading") {
     return (
@@ -918,108 +1313,46 @@ export function ReaderExperience({
       </div>
     );
   }
-  const lessons = lessonsOf(status.course);
-  const current =
-    lessons.find((lesson) => lesson.id === lessonId) ??
-    lessons.find((lesson) => lesson.id === status.progress.currentLessonId) ??
-    lessons[0]!;
-  const index = lessons.findIndex((lesson) => lesson.id === current.id);
-  const percentage = coursePercent(status.course, status.progress);
-  const readerBase = mode === "preview" ? "/preview" : "/read";
-  const lessonHref = (id: string) =>
-    `${readerBase}/${encodeURIComponent(packageId)}/${encodeURIComponent(id)}`;
   return (
-    <div className="active-reader">
-      <aside className="reader-course-nav">
-        <div className="reader-package-title">
-          <p>
-            {status.course.kind} · MCF {status.course.mcf}
-          </p>
-          <h1>{status.course.title}</h1>
-          <div
-            className="reader-progress-bar"
-            aria-label={`${percentage}% complete`}
-          >
-            <i style={{ width: `${percentage}%` }} />
-          </div>
-          <strong>{percentage}% complete</strong>
-          {mode === "reader" ? (
-            <SyncStatus category="progress" stableId={packageId} />
-          ) : null}
-        </div>
-        <nav aria-label="Package contents">
-          {status.course.chapters.map((chapter) => (
-            <section key={chapter.id}>
-              <h2>{chapter.title}</h2>
-              {chapter.lessons.map((lesson) => (
-                <Link
-                  key={lesson.id}
-                  href={lessonHref(lesson.id)}
-                  aria-current={lesson.id === current.id ? "page" : undefined}
-                  className={
-                    status.progress.lessons[lesson.id] ? "complete" : ""
-                  }
-                >
-                  <span aria-hidden="true">
-                    {status.progress.lessons[lesson.id]
-                      ? "✓"
-                      : lesson.id === current.id
-                        ? "→"
-                        : "·"}
-                  </span>
-                  {lesson.title}
-                </Link>
-              ))}
-            </section>
-          ))}
-        </nav>
-      </aside>
-      <article className="reader-lesson" id="lesson">
-        <header>
-          <p className="chapter-label">
-            Lesson {index + 1} of {lessons.length}
-          </p>
-          <h1>{current.title}</h1>
-          {current.description ? <p>{current.description}</p> : null}
-          {status.progress.lessons[current.id] ? (
-            <Status tone="positive">Lesson complete</Status>
-          ) : null}
-        </header>
-        {current.activities.map((activity) => (
-          <ActivityView
-            key={activity.id}
-            activity={activity}
-            lesson={current}
-            course={status.course}
-            progress={status.progress}
-            resolveAsset={status.resolveAsset}
-            onProgress={commit}
-          />
-        ))}
-        <nav className="reader-lesson-nav" aria-label="Lesson navigation">
-          {lessons[index - 1] ? (
-            <Link
-              className="button button-secondary"
-              href={lessonHref(lessons[index - 1]!.id)}
-            >
-              ← {lessons[index - 1]!.title}
-            </Link>
-          ) : (
-            <span />
-          )}
-          {lessons[index + 1] ? (
-            <Link className="button" href={lessonHref(lessons[index + 1]!.id)}>
-              {lessons[index + 1]!.title} →
-            </Link>
-          ) : mode === "reader" ? (
-            <Link className="button" href="/library">
-              Return to library
-            </Link>
-          ) : (
-            <span className="preview-complete">End of preview</span>
-          )}
-        </nav>
-      </article>
-    </div>
+    <ReaderCoursePresentation
+      course={status.course}
+      progress={status.progress}
+      resolveAsset={status.resolveAsset}
+      currentLessonId={
+        mode === "preview"
+          ? (previewLessonId ??
+            lessonId ??
+            status.progress.currentLessonId ??
+            lessonsOf(status.course)[0]!.id)
+          : (offlineLessonId ??
+            lessonId ??
+            status.progress.currentLessonId ??
+            lessonsOf(status.course)[0]!.id)
+      }
+      mode={mode}
+      onProgress={commit}
+      onLessonChange={(nextLessonId) => {
+        if (mode === "preview") setPreviewLessonId(nextLessonId);
+        else {
+          if (
+            status.state === "ready" &&
+            status.progress.currentLessonId !== nextLessonId
+          )
+            commit({
+              ...status.progress,
+              currentLessonId: nextLessonId,
+              lastOpenedAt: new Date().toISOString(),
+            });
+          const href = `/read/${encodeURIComponent(packageId)}/${encodeURIComponent(nextLessonId)}`;
+          if (typeof navigator !== "undefined" && !navigator.onLine) {
+            setOfflineLessonId(nextLessonId);
+            window.history.pushState({}, "", href);
+          } else {
+            setOfflineLessonId(undefined);
+            router.push(href);
+          }
+        }
+      }}
+    />
   );
 }

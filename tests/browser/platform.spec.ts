@@ -15,7 +15,7 @@ test("homepage is a compact dashboard with predictable navigation", async ({
   await expect(header).toBeVisible();
   await expect(
     page.getByRole("heading", {
-      name: "Discover, learn, and create MCF packages.",
+      name: "Discover, learn, and create portable courses.",
     }),
   ).toBeVisible();
   const quickActions = page.getByRole("navigation", { name: "Quick actions" });
@@ -54,9 +54,7 @@ test("homepage is a compact dashboard with predictable navigation", async ({
   ).toHaveAttribute("aria-current", "page");
 });
 
-test("theme selection persists and system mode follows the browser", async ({
-  page,
-}) => {
+test("theme selection persists across reloads", async ({ page }) => {
   await page.goto("/");
   const theme = page.locator(".platform-utilities").getByLabel(/Theme/);
   await theme.click();
@@ -68,11 +66,11 @@ test("theme selection persists and system mode follows the browser", async ({
     .toBe("rgb(16, 20, 17)");
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await expect(theme).toHaveAttribute("aria-label", /dark mode/);
+  await expect(theme).toHaveAttribute("aria-label", /switch to light mode/);
 
   await page.emulateMedia({ colorScheme: "dark" });
   await theme.click();
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await page.emulateMedia({ colorScheme: "light" });
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 });
@@ -169,4 +167,33 @@ test("global surfaces fit all required mobile viewports", async ({ page }) => {
         .getByLabel("Theme"),
     ).toBeVisible();
   }
+});
+
+test("mobile navigation dismisses predictably and restores focus", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/explore");
+  const trigger = page.locator(".platform-mobile-menu summary");
+  await trigger.click();
+  await expect(page.locator(".platform-mobile-menu")).toHaveAttribute(
+    "open",
+    "",
+  );
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".platform-mobile-menu")).not.toHaveAttribute(
+    "open",
+    "",
+  );
+  await expect(trigger).toBeFocused();
+  await trigger.click();
+  await page
+    .getByRole("navigation", { name: "Mobile navigation" })
+    .getByRole("link", { name: "Search courses" })
+    .click();
+  await expect(page).toHaveURL(/\/explore#search$/);
+  await expect(page.locator(".platform-mobile-menu")).not.toHaveAttribute(
+    "open",
+    "",
+  );
 });

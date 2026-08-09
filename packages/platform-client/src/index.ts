@@ -14,6 +14,7 @@ export type AuthEvent =
   | "token-refreshed"
   | "password-recovery"
   | "user-updated"
+  | "unavailable"
   | "expired";
 
 export interface PublicProfile {
@@ -219,7 +220,7 @@ export interface RepositoryClient {
   getNetwork(packageId: string): Promise<RepositoryNetwork>;
   setStar(packageId: string, starred: boolean): Promise<StarResult>;
   listStarred(page?: number, pageSize?: number): Promise<RepositoryResult>;
-  listOwned(): Promise<readonly PublishedPackage[]>;
+  listOwned(page?: number, pageSize?: number): Promise<RepositoryResult>;
 }
 
 export interface PublishingRequest {
@@ -472,7 +473,7 @@ export function createUnavailablePlatformClient(): PlatformClient {
         return deferred();
       },
       async listOwned() {
-        return [];
+        return deferred();
       },
     },
     publishing: {

@@ -113,11 +113,11 @@ export default async function ExplorePage({
       <header className="page-heading split-heading">
         <div>
           <p className="section-label">Public repository</p>
-          <h1>Explore packages</h1>
+          <h1>Explore courses and learning resources</h1>
         </div>
         <p>
-          Search canonical published metadata. Unlisted packages remain
-          direct-link only, and private packages never appear here.
+          Search published learning materials. Unlisted work remains available
+          only by direct link, and private work never appears here.
         </p>
       </header>
       <ExploreControls query={parsed.display} subjects={subjects} />

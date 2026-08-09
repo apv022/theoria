@@ -3,6 +3,7 @@
 import { Button, Field, LinkButton, Notice } from "@theoria/ui";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { authCallbackUrl } from "../lib/auth-redirect";
 import { useAuth } from "./auth-provider";
 
 type AuthMode = "login" | "signup" | "forgot" | "reset";
@@ -28,14 +29,16 @@ const message = (reason: unknown): string => {
 export function AuthForm({
   mode,
   next = "/settings",
+  initialError,
 }: {
   readonly mode: AuthMode;
   readonly next?: string;
+  readonly initialError?: string | undefined;
 }) {
   const { configured, identity, platform, reload } = useAuth();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string>();
+  const [error, setError] = useState<string | undefined>(initialError);
   const [success, setSuccess] = useState<string>();
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -57,7 +60,10 @@ export function AuthForm({
           password,
           handle: String(data.get("handle") ?? ""),
           displayName: String(data.get("displayName") ?? ""),
-          emailRedirectTo: `${location.origin}/auth/callback?next=/settings/profile`,
+          emailRedirectTo: authCallbackUrl(
+            "/settings/profile",
+            location.origin,
+          ),
         });
         if (result.verificationRequired)
           setSuccess(
@@ -70,7 +76,7 @@ export function AuthForm({
       } else if (mode === "forgot") {
         await platform.authentication.requestPasswordReset(
           email,
-          `${location.origin}/auth/callback?next=/reset-password`,
+          authCallbackUrl("/reset-password", location.origin),
         );
         setSuccess(
           "If an account exists for that address, a recovery email is on its way.",
@@ -111,11 +117,12 @@ export function AuthForm({
 
   return (
     <form className="auth-card" onSubmit={submit}>
-      <p className="section-label">Optional Theoria account</p>
+      <p className="section-label">Theoria account</p>
       <h1>{title[mode]}</h1>
       <p>
-        Your drafts, packages, progress, and compilation history stay in this
-        browser. Signing in does not upload or merge them.
+        Sign in for your public profile and publishing tools. Your local drafts,
+        learning progress, and import history stay in this browser and are not
+        uploaded or merged automatically.
       </p>
       {mode !== "reset" ? (
         <Field

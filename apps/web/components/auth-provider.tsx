@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {
       .catch(() => {
         if (!active) return;
         setIdentity(null);
-        setEvent("expired");
+        setEvent("unavailable");
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -101,9 +101,16 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {
       if (!navigator.onLine) {
         if (settings.pausedReason !== "offline")
           await localStore.sync.configure({ pausedReason: "offline" });
+        failures += 1;
+        schedule(syncRetryDelay(failures));
         return;
       }
       let activeIdentity = identity;
+      if (!activeIdentity && event === "unavailable") {
+        failures += 1;
+        schedule(syncRetryDelay(failures));
+        return;
+      }
       if (!activeIdentity || event === "expired") {
         try {
           activeIdentity = await platform.authentication.currentIdentity();

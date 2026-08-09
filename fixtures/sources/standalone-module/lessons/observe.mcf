@@ -1,0 +1,34 @@
+---
+id: observe
+title: "Observe before inferring"
+---
+
+:::mcf-activity
+type: notes
+id: observation-notes
+:::
+
+# Start with what the evidence shows
+
+An **observation** records evidence before an inference explains it.
+
+:::mcf-end
+
+:::mcf-activity
+type: practice
+id: observation-practice
+:::
+
+```mcf-question
+id: observation-choice
+type: multiple_choice
+prompt: "Which statement is a direct observation?"
+options:
+  - id: spots
+    text: "The rock has three dark spots."
+  - id: rain
+    text: "Rain caused the spots."
+answer: spots
+```
+
+:::mcf-end

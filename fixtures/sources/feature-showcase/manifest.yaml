@@ -1,0 +1,28 @@
+mcf: "1.1"
+kind: course
+id: feature-showcase
+title: "MCF 1.1 Feature Showcase"
+language: en
+version: "1.1.0"
+assets:
+  - id: format-diagram
+    source: assets/format-diagram.svg
+    media_type: image/svg+xml
+    title: "MCF source flow"
+    description: "A safe local diagram used by rich content."
+rubrics:
+  - id: rich-rubric
+    title: "Rich-content rubric"
+    description: "Use **evidence** and justify $x^2$."
+    criteria:
+      - id: evidence
+        description: "Explains the **evidence** with $\\sqrt{144}$."
+        levels:
+          - id: complete
+            description: "Complete: $12^2=144$."
+            points: 2
+          - id: developing
+            description: "Developing: add a *worked example*."
+            points: 1
+chapters:
+  - source: chapters/showcase
