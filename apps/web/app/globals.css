@@ -935,22 +935,13 @@ h3 {
   color: var(--muted);
 }
 .profile-packages > header {
-  display: grid;
-  grid-template-columns: minmax(5rem, 6rem) minmax(0, 1fr);
-  column-gap: 2rem;
-  row-gap: 0.75rem;
-  align-items: end;
+  display: block;
 }
 .profile-packages > header .section-label {
-  grid-row: span 2;
-  align-self: center;
-}
-.profile-packages > header h2,
-.profile-packages > header > p:last-child {
-  grid-column: 2;
+  margin-bottom: 0.75rem;
 }
 .profile-packages > header > p:last-child {
-  margin: 0;
+  margin: 0.75rem 0 0;
 }
 .profile-packages {
   margin-top: 4rem;
