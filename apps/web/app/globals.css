@@ -922,6 +922,12 @@ h3 {
 .profile-activity {
   margin-top: 2rem;
 }
+.profile-activity ol {
+  max-height: 12rem;
+  overflow-y: auto;
+  padding-right: 1rem;
+  scrollbar-gutter: stable;
+}
 .profile-activity li {
   padding: 0.5rem 0;
 }
