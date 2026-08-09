@@ -26,7 +26,7 @@ export default async function HomePage() {
       <header className="dashboard-intro">
         <div>
           <p className="section-label">Portable learning platform</p>
-          <h1>Discover, learn, and create MCF packages.</h1>
+          <h1>Discover, learn, and create portable courses.</h1>
           <p>
             Courses, progress, and drafts work locally without an account.
             Publishing and synchronization remain explicit choices.
@@ -34,7 +34,7 @@ export default async function HomePage() {
         </div>
         <form action="/explore" role="search" className="dashboard-search">
           <label className="field">
-            <span>Search public packages</span>
+            <span>Search public courses</span>
             <input
               type="search"
               name="q"
@@ -72,8 +72,8 @@ export default async function HomePage() {
         </header>
         {unavailable ? (
           <Notice title="Repository unavailable">
-            Public data could not be loaded. Browser-owned work remains
-            available through Library, Studio, and the compiler.
+            Public courses could not be loaded. Work saved in this browser
+            remains available through Library, Studio, and the compiler.
           </Notice>
         ) : recent.length ? (
           <div className="repository-grid">
@@ -86,12 +86,12 @@ export default async function HomePage() {
           </div>
         ) : (
           <div className="empty-state compact-empty">
-            <h3>No public packages yet.</h3>
+            <h3>No public courses yet.</h3>
             <p>
               Private and unlisted releases are intentionally not presented as
               public catalog activity.
             </p>
-            <LinkButton href="/studio">Create a package</LinkButton>
+            <LinkButton href="/studio">Create a course</LinkButton>
           </div>
         )}
         {subjects.length ? (

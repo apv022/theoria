@@ -1,6 +1,7 @@
 import type { PublishedPackage } from "@theoria/platform-client";
 import { Status } from "@theoria/ui";
 import Link from "next/link";
+import { PackageCover } from "./package-cover";
 
 const text = (value: unknown): string | undefined =>
   typeof value === "string" && value.trim() ? value.trim() : undefined;
@@ -42,18 +43,16 @@ export function RepositoryPackageCard({
       : undefined;
   return (
     <article className="repository-card" aria-labelledby={headingId}>
-      {cover ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img className="repository-card-cover" src={cover} alt="" />
-      ) : (
-        <div className="repository-card-mark" aria-hidden="true">
-          {packageValue.title.slice(0, 1).toUpperCase()}
-        </div>
-      )}
+      <PackageCover
+        className="repository-card-cover"
+        src={cover}
+        title={packageValue.title}
+        kind={latest.packageKind}
+        stableId={packageValue.id}
+      />
       <div className="repository-card-body">
         <div className="repository-card-status">
           <Status>{latest.packageKind.replaceAll("_", " ")}</Status>
-          <Status tone="positive">{latest.validationSummary.state}</Status>
         </div>
         <h2 id={headingId}>
           <Link href={`/packages/${packageValue.slug}`}>
@@ -86,7 +85,7 @@ export function RepositoryPackageCard({
             <dd>{latest.version}</dd>
           </div>
           <div>
-            <dt>MCF</dt>
+            <dt>Format</dt>
             <dd>{latest.mcfVersion}</dd>
           </div>
           <div>

@@ -1,8 +1,8 @@
 import { Notice, Status } from "@theoria/ui";
-import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { PublishedPackageActions } from "../../../../components/published-package-actions";
+import { PackageCover } from "../../../../components/package-cover";
 import { serverPlatformClient } from "../../../../lib/platform/server";
 
 interface Props {
@@ -15,7 +15,6 @@ export const dynamic = "force-dynamic";
 export default async function PackagePage({ params }: Props) {
   const { slug } = await params;
   const platform = await serverPlatformClient();
-  const packageValue = await platform.repository.getBySlug(slug);
 
   if (!platform.authentication.configured)
     return (
@@ -26,6 +25,20 @@ export default async function PackagePage({ params }: Props) {
         </Notice>
       </div>
     );
+  let packageValue;
+  try {
+    packageValue = await platform.repository.getBySlug(slug);
+  } catch {
+    return (
+      <div className="page-wrap narrow-page">
+        <h1>Repository unavailable</h1>
+        <Notice title="Package service unavailable">
+          This package could not be loaded. Local Library, Reader, Studio, and
+          exports remain available; reload to retry.
+        </Notice>
+      </div>
+    );
+  }
   if (!packageValue)
     return (
       <div className="page-wrap narrow-page">
@@ -50,7 +63,12 @@ export default async function PackagePage({ params }: Props) {
       ? level
       : (level?.label ?? level?.identifier ?? "Not declared");
   const summary = manifest as Readonly<Record<string, unknown>> | undefined;
-  const network = await platform.repository.getNetwork(packageValue.id);
+  let network;
+  try {
+    network = await platform.repository.getNetwork(packageValue.id);
+  } catch {
+    network = undefined;
+  }
   const textList = (value: unknown): string => {
     if (!Array.isArray(value) || value.length === 0) return "Not declared";
     return value
@@ -74,20 +92,21 @@ export default async function PackagePage({ params }: Props) {
         <a href="#versions">Versions</a>
         <a href="#lineage">Lineage</a>
       </nav>
-      <p className="section-label">Course repository</p>
+      <p className="section-label">Published course</p>
       <div className="detail-grid">
         <div className="detail-cover">
-          {typeof manifest?.cover === "string" && latest ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={`/api/packages/${encodeURIComponent(packageValue.slug)}/versions/${encodeURIComponent(latest.version)}/cover`}
-              alt=""
-            />
-          ) : (
-            <Image src="/theoria-mark.svg" width={192} height={192} alt="" />
-          )}
-          <span>{latest?.packageKind ?? "MCF"}</span>
-          <small>Canonical source repository</small>
+          <PackageCover
+            src={
+              typeof manifest?.cover === "string" && latest
+                ? `/api/packages/${encodeURIComponent(packageValue.slug)}/versions/${encodeURIComponent(latest.version)}/cover`
+                : undefined
+            }
+            title={packageValue.title}
+            kind={latest?.packageKind}
+            stableId={packageValue.id}
+          />
+          <span>{latest?.packageKind ?? "Learning package"}</span>
+          <small>Published source available</small>
         </div>
         <article id="overview">
           <div className="actions">
@@ -134,8 +153,8 @@ export default async function PackagePage({ params }: Props) {
       {latest && manifest ? (
         <section id="content" className="package-metadata-grid">
           <article>
-            <p className="section-label">Canonical metadata</p>
-            <h2>About this package</h2>
+            <p className="section-label">Course details</p>
+            <h2>About this course</h2>
             <dl className="facts">
               <div>
                 <dt>Level</dt>
@@ -172,33 +191,40 @@ export default async function PackagePage({ params }: Props) {
             </dl>
           </article>
           <article>
-            <p className="section-label">Package structure</p>
-            <h2>Validated contents</h2>
-            <dl className="facts">
-              <div>
-                <dt>Lessons</dt>
-                <dd>{String(summary?.lessonCount ?? 0)}</dd>
-              </div>
-              <div>
-                <dt>Activities</dt>
-                <dd>{String(summary?.activityCount ?? 0)}</dd>
-              </div>
-              <div>
-                <dt>Questions</dt>
-                <dd>{String(summary?.questionCount ?? 0)}</dd>
-              </div>
-              <div>
-                <dt>Files / assets</dt>
-                <dd>
-                  {String(summary?.fileCount ?? "Not reported")} /{" "}
-                  {String(summary?.assetCount ?? "Not reported")}
-                </dd>
-              </div>
-              <div>
-                <dt>Validation</dt>
-                <dd>{latest.validationSummary.state}</dd>
-              </div>
-            </dl>
+            <p className="section-label">Technical metadata</p>
+            <h2>Package format and contents</h2>
+            <details className="technical-package-details">
+              <summary>Show technical package details</summary>
+              <dl className="facts">
+                <div>
+                  <dt>Format version</dt>
+                  <dd>MCF {latest.mcfVersion}</dd>
+                </div>
+                <div>
+                  <dt>Lessons</dt>
+                  <dd>{String(summary?.lessonCount ?? 0)}</dd>
+                </div>
+                <div>
+                  <dt>Activities</dt>
+                  <dd>{String(summary?.activityCount ?? 0)}</dd>
+                </div>
+                <div>
+                  <dt>Questions</dt>
+                  <dd>{String(summary?.questionCount ?? 0)}</dd>
+                </div>
+                <div>
+                  <dt>Files / assets</dt>
+                  <dd>
+                    {String(summary?.fileCount ?? "Not reported")} /{" "}
+                    {String(summary?.assetCount ?? "Not reported")}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Validation</dt>
+                  <dd>{latest.validationSummary.state}</dd>
+                </div>
+              </dl>
+            </details>
           </article>
         </section>
       ) : null}
@@ -247,33 +273,42 @@ export default async function PackagePage({ params }: Props) {
       </section>
       <section id="lineage" className="version-history repository-lineage">
         <p className="section-label">Repository network</p>
-        <h2>
-          {network.starCount} {network.starCount === 1 ? "star" : "stars"} ·{" "}
-          {network.forkCount} {network.forkCount === 1 ? "fork" : "forks"}
-        </h2>
-        {network.parent ? (
-          <p>
-            Forked from{" "}
-            <Link href={`/packages/${network.parent.slug}`}>
-              @{network.parent.creatorHandle}/{network.parent.title}
-            </Link>{" "}
-            at version {network.parent.version}.
-          </p>
+        {!network ? (
+          <Notice title="Lineage unavailable">
+            Star and fork counts could not be loaded. The canonical package and
+            its immutable versions remain available.
+          </Notice>
         ) : (
-          <p>This repository is an original publication.</p>
-        )}
-        {network.directForks.length ? (
-          <ul>
-            {network.directForks.map((fork) => (
-              <li key={`${fork.creatorHandle}/${fork.slug}`}>
-                <Link href={`/packages/${fork.slug}`}>
-                  @{fork.creatorHandle}/{fork.title}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>No public direct forks yet.</p>
+          <>
+            <h2>
+              {network.starCount} {network.starCount === 1 ? "star" : "stars"} ·{" "}
+              {network.forkCount} {network.forkCount === 1 ? "fork" : "forks"}
+            </h2>
+            {network.parent ? (
+              <p>
+                Forked from{" "}
+                <Link href={`/packages/${network.parent.slug}`}>
+                  @{network.parent.creatorHandle}/{network.parent.title}
+                </Link>{" "}
+                at version {network.parent.version}.
+              </p>
+            ) : (
+              <p>This repository is an original publication.</p>
+            )}
+            {network.directForks.length ? (
+              <ul>
+                {network.directForks.map((fork) => (
+                  <li key={`${fork.creatorHandle}/${fork.slug}`}>
+                    <Link href={`/packages/${fork.slug}`}>
+                      @{fork.creatorHandle}/{fork.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No public direct forks yet.</p>
+            )}
+          </>
         )}
       </section>
     </div>

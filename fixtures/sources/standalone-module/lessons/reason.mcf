@@ -1,0 +1,23 @@
+---
+id: reason
+title: "Sequence evidence and reasoning"
+---
+
+:::mcf-activity
+type: practice
+id: reasoning-practice
+:::
+
+```mcf-question
+id: workflow-order
+type: ordering
+prompt: "Order the field workflow."
+items:
+  - id: observe
+    text: "Record direct observations."
+  - id: infer
+    text: "Propose a supported inference."
+answer: [observe, infer]
+```
+
+:::mcf-end

@@ -39,7 +39,7 @@ export function PublishedPackageActions({
   readonly remoteVersionId: string;
   readonly title: string;
   readonly creatorHandle: string;
-  readonly initialNetwork: RepositoryNetwork;
+  readonly initialNetwork?: RepositoryNetwork | undefined;
 }) {
   const router = useRouter();
   const { identity, platform } = useAuth();
@@ -56,8 +56,10 @@ export function PublishedPackageActions({
   const [progress, setProgress] = useState<LearnerProgress>();
   const [message, setMessage] = useState<string>();
   const [error, setError] = useState<string>();
-  const [starred, setStarred] = useState(initialNetwork.viewerStarred);
-  const [starCount, setStarCount] = useState(initialNetwork.starCount);
+  const [starred, setStarred] = useState(
+    initialNetwork?.viewerStarred ?? false,
+  );
+  const [starCount, setStarCount] = useState(initialNetwork?.starCount ?? 0);
   const [starBusy, setStarBusy] = useState(false);
   const sourceUrl = `/api/packages/${encodeURIComponent(slug)}/versions/${encodeURIComponent(version)}/source`;
 
@@ -266,13 +268,16 @@ export function PublishedPackageActions({
       <div className="actions repository-action-row">
         <Button
           className="button-secondary"
-          disabled={starBusy}
+          disabled={starBusy || !initialNetwork}
           aria-pressed={starred}
           aria-label={`${starred ? "Remove star from" : "Star"} ${title}. ${starCount} stars`}
           onClick={toggleStar}
         >
-          {starBusy ? "Updating…" : starred ? "★ Starred" : "☆ Star"} ·{" "}
-          {starCount}
+          {!initialNetwork
+            ? "Stars unavailable"
+            : starBusy
+              ? "Updating…"
+              : `${starred ? "★ Starred" : "☆ Star"} · ${starCount}`}
         </Button>
         <Button
           className="button-secondary"
@@ -284,7 +289,9 @@ export function PublishedPackageActions({
         <Button disabled={busy} onClick={() => openInStudio(true)}>
           {busy
             ? "Preparing…"
-            : `Fork into Studio · ${initialNetwork.forkCount}`}
+            : initialNetwork
+              ? `Fork into Studio · ${initialNetwork.forkCount}`
+              : "Fork into Studio"}
         </Button>
       </div>
       <div className="actions repository-download-row">

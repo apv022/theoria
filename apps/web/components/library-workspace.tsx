@@ -8,7 +8,6 @@ import {
 } from "@theoria/package-model";
 import { localPackageId, toReaderStructure } from "@theoria/reader";
 import { Button, LinkButton, Notice, Status } from "@theoria/ui";
-import Image from "next/image";
 import {
   useCallback,
   useEffect,
@@ -17,6 +16,7 @@ import {
   type ChangeEvent,
 } from "react";
 import { SyncStatus } from "./sync-status";
+import { PackageCover } from "./package-cover";
 
 const store =
   typeof indexedDB === "undefined" ? undefined : new IndexedDbLocalStore();
@@ -28,6 +28,16 @@ const download = (blob: Blob, filename: string): void => {
   anchor.download = filename;
   anchor.click();
   setTimeout(() => URL.revokeObjectURL(url), 0);
+};
+
+const coverMediaType = (path: string): string => {
+  const extension = path.toLowerCase().split(".").pop();
+  if (extension === "svg") return "image/svg+xml";
+  if (extension === "png") return "image/png";
+  if (extension === "webp") return "image/webp";
+  if (extension === "gif") return "image/gif";
+  if (extension === "avif") return "image/avif";
+  return "image/jpeg";
 };
 
 export function LibraryWorkspace() {
@@ -99,7 +109,9 @@ export function LibraryWorkspace() {
             );
             if (file)
               nextCovers[entry.packageId] = URL.createObjectURL(
-                new Blob([file.bytes]),
+                new Blob([file.bytes], {
+                  type: coverMediaType(file.path),
+                }),
               );
           } catch {
             /* existing corruption handling remains authoritative */
@@ -298,7 +310,7 @@ export function LibraryWorkspace() {
         <div className="library-import">
           <Status tone="positive">Stored on this device</Status>
           <label className="button">
-            {busy ? "Importing…" : "Add MCF package"}
+            {busy ? "Importing…" : "Import course file"}
             <input
               type="file"
               accept=".mcf.zip,application/zip"
@@ -343,28 +355,20 @@ export function LibraryWorkspace() {
             return (
               <article className="library-card" key={entry.packageId}>
                 <div className="library-card-top">
-                  {coverUrls[entry.packageId] ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      className="library-card-cover"
-                      src={coverUrls[entry.packageId]}
-                      alt=""
-                    />
-                  ) : (
-                    <Image
-                      src="/theoria-mark.svg"
-                      width={36}
-                      height={36}
-                      alt=""
-                    />
-                  )}
+                  <PackageCover
+                    className="library-card-cover"
+                    src={coverUrls[entry.packageId]}
+                    title={entry.title}
+                    kind={entry.packageKind}
+                    stableId={entry.packageId}
+                  />
                   <Status tone={state?.completedAt ? "positive" : "neutral"}>
                     {state?.completedAt ? "Complete" : `${percentage}%`}
                   </Status>
                   <SyncStatus category="library" stableId={entry.packageId} />
                 </div>
                 <p>
-                  {entry.packageKind} · MCF {entry.mcfVersion} · v
+                  {entry.packageKind} · Format {entry.mcfVersion} · v
                   {entry.version}
                 </p>
                 <h2>{entry.title}</h2>
@@ -442,12 +446,15 @@ export function LibraryWorkspace() {
           </span>
           <h2>Your shelf is ready.</h2>
           <p>
-            Add a valid MCF source archive here, or add a successful result from
-            the compiler.
+            Explore a course to start learning, or import a compatible course
+            file already on this device.
           </p>
-          <LinkButton href="/compile" secondary>
-            Open browser compiler
-          </LinkButton>
+          <div className="actions empty-state-actions">
+            <LinkButton href="/explore">Explore courses</LinkButton>
+            <LinkButton href="/compile" secondary>
+              Open import tools
+            </LinkButton>
+          </div>
         </div>
       )}
 

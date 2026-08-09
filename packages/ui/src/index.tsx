@@ -5,6 +5,7 @@ import type {
   InputHTMLAttributes,
   ReactNode,
 } from "react";
+import { useId } from "react";
 
 export interface NavigationItem {
   readonly href: string;
@@ -116,13 +117,14 @@ export function Notice({
   readonly title: string;
   readonly children: ReactNode;
 }) {
+  const titleId = useId();
   return (
-    <section className="notice" aria-labelledby="notice-title">
+    <section className="notice" aria-labelledby={titleId}>
       <div className="notice-mark" aria-hidden="true">
         ↗
       </div>
       <div>
-        <h2 id="notice-title">{title}</h2>
+        <h2 id={titleId}>{title}</h2>
         <p>{children}</p>
       </div>
     </section>

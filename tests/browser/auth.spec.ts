@@ -53,7 +53,7 @@ test("signup restores its session, edits a public profile, and explicitly claims
   await page.goto("/library");
   await page
     .locator('input[type="file"]')
-    .setInputFiles("/home/apv/theoria/fixtures/local/minimal-1.1.mcf.zip");
+    .setInputFiles(`${process.cwd()}/fixtures/local/minimal-1.1.mcf.zip`);
   await page.getByRole("link", { name: "Start learning" }).click();
   await expect(
     page.getByRole("heading", { name: "Welcome", exact: true }),
@@ -122,4 +122,37 @@ test("duplicate and invalid handles surface safe validation", async ({
       .getByLabel("Handle")
       .evaluate((input: HTMLInputElement) => input.validity.valid),
   ).toBe(false);
+});
+
+test("email links use the canonical callback and unsafe next paths stay local", async ({
+  page,
+}) => {
+  await signup(page, "redirect_author");
+  await page.goto("/forgot-password");
+  await page.getByLabel("Email").fill("redirect_author@example.test");
+  await page.getByRole("button", { name: "Send recovery email" }).click();
+  const redirects = await page.request
+    .get(`${fakeSupabase}/__test/auth-redirects`)
+    .then((response) => response.json());
+  expect(redirects).toEqual([
+    {
+      type: "signup",
+      redirectTo:
+        "http://127.0.0.1:3000/auth/callback?next=%2Fsettings%2Fprofile",
+    },
+    {
+      type: "recovery",
+      redirectTo: "http://127.0.0.1:3000/auth/callback?next=%2Freset-password",
+    },
+  ]);
+
+  await page.goto("/login?next=//example.test/escaped");
+  await page.getByLabel("Email").fill("redirect_author@example.test");
+  await page.getByLabel("Password").fill("correct horse battery staple");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL("http://127.0.0.1:3000/settings");
+  await page.goto("/auth/callback");
+  await expect(page.locator(".form-message[role=alert]")).toContainText(
+    "account link is incomplete",
+  );
 });

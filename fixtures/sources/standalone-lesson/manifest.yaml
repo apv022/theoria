@@ -1,0 +1,7 @@
+mcf: "1.1"
+kind: lesson
+id: map-scale-lesson
+title: "Reading Map Scale"
+language: en
+version: "1.1.0"
+entry: lesson.mcf

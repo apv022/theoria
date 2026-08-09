@@ -1,0 +1,15 @@
+---
+id: welcome
+title: "Welcome"
+---
+
+:::mcf-activity
+type: notes
+id: welcome-notes
+:::
+
+# Hello, MCF
+
+This is the smallest useful MCF 1.1 course.
+
+:::mcf-end

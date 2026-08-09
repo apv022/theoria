@@ -98,6 +98,7 @@ export function ExploreControls({
           : [{ value: selectedSubject, packageCount: 0 }]),
       ]
     : subjects;
+  const advancedActive = Boolean(query.kind || query.mcf);
 
   return (
     <>
@@ -114,7 +115,7 @@ export function ExploreControls({
         onSubmit={submit}
       >
         <label className="field repository-query">
-          <span>Search packages</span>
+          <span>Search courses and learning resources</span>
           <input
             name="q"
             type="search"
@@ -150,35 +151,43 @@ export function ExploreControls({
           <span>Language</span>
           <input
             value={language}
-            placeholder="Any BCP 47 language"
+            placeholder="Language code, for example en or fr-CA"
             onChange={(event) => setLanguage(event.target.value)}
           />
         </label>
-        <label className="field">
-          <span>Package kind</span>
-          <select
-            value={query.kind ?? ""}
-            onChange={(event) => update("kind", event.target.value)}
-          >
-            <option value="">All kinds</option>
-            <option value="course">Course</option>
-            <option value="module">Module</option>
-            <option value="lesson">Lesson</option>
-            <option value="question_bank">Question bank</option>
-            <option value="asset_collection">Asset collection</option>
-          </select>
-        </label>
-        <label className="field">
-          <span>MCF version</span>
-          <select
-            value={query.mcf ?? ""}
-            onChange={(event) => update("mcf", event.target.value)}
-          >
-            <option value="">All MCF versions</option>
-            <option value="1.1">MCF 1.1</option>
-            <option value="1.0">MCF 1.0</option>
-          </select>
-        </label>
+        <details
+          className="repository-advanced"
+          open={advancedActive || undefined}
+        >
+          <summary>More filters{advancedActive ? " · active" : ""}</summary>
+          <div>
+            <label className="field">
+              <span>Content type</span>
+              <select
+                value={query.kind ?? ""}
+                onChange={(event) => update("kind", event.target.value)}
+              >
+                <option value="">All content types</option>
+                <option value="course">Course</option>
+                <option value="module">Module</option>
+                <option value="lesson">Lesson</option>
+                <option value="question_bank">Question bank</option>
+                <option value="asset_collection">Asset collection</option>
+              </select>
+            </label>
+            <label className="field">
+              <span>Format version</span>
+              <select
+                value={query.mcf ?? ""}
+                onChange={(event) => update("mcf", event.target.value)}
+              >
+                <option value="">All format versions</option>
+                <option value="1.1">MCF 1.1</option>
+                <option value="1.0">MCF 1.0</option>
+              </select>
+            </label>
+          </div>
+        </details>
         <label className="field">
           <span>Sort</span>
           <select

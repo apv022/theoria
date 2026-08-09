@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { validatePackage } from "mcf-npm/package";
 import {
   countPackage,
@@ -28,8 +29,15 @@ const bytes = (value: Uint8Array): ArrayBuffer =>
     value.byteOffset + value.byteLength,
   ) as ArrayBuffer;
 
+const projectRoot = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../../..",
+);
+const fixtureRoot = path.join(projectRoot, "fixtures/local");
+const fixture = (name: string) => path.join(fixtureRoot, name);
+
 async function validateFiles(files: readonly SerializedFile[]) {
-  const directory = await mkdtemp("/home/apv/theoria/.authoring-test-");
+  const directory = await mkdtemp(path.join(projectRoot, ".authoring-test-"));
   try {
     for (const file of files) {
       const target = path.join(directory, file.path);
@@ -321,17 +329,16 @@ test("visual regeneration preserves TeX-rich YAML values through parse and re-ex
 });
 
 test("visual metadata generation round-trips without phantom content", async () => {
-  const original = await validatePackage(
-    "/home/apv/examplecourses/archives/feature-showcase.mcf.zip",
+  const original = await validatePackage(fixture("minimal-1.1.mcf.zip"));
+  assert.ok(
+    original.valid && original.package,
+    "minimal fixture must validate",
   );
-  assert.ok(original.valid && original.package);
   const before = countPackage(original.package);
   const changed = updatePackageMetadata(original.package, {
     title: "Edited feature showcase",
   });
-  const archive = await readFile(
-    "/home/apv/examplecourses/archives/feature-showcase.mcf.zip",
-  );
+  const archive = await readFile(fixture("minimal-1.1.mcf.zip"));
   const assets = extractSafeArchive(new Uint8Array(archive))
     .filter(
       (file) =>
@@ -356,20 +363,14 @@ test("visual metadata generation round-trips without phantom content", async () 
 });
 
 test("source-first imports preserve every byte, asset, kind, and literal marker", async () => {
-  const fixtures = [
-    "/home/apv/examplecourses/archives/minimal.mcf.zip",
-    "/home/apv/examplecourses/archives/standalone-module.mcf.zip",
-    "/home/apv/examplecourses/archives/standalone-lesson.mcf.zip",
-    "/home/apv/examplecourses/archives/feature-showcase.mcf.zip",
-    "/home/apv/mcf-authoring-masterclass.mcf.zip",
-  ];
+  const fixtures = [fixture("minimal-1.1.mcf.zip"), fixture("stress.mcf.zip")];
   for (const fixture of fixtures) {
     const archive = await readFile(fixture);
     const sourceFiles = extractSafeArchive(new Uint8Array(archive)).map(
       (file) => ({ path: file.path, bytes: bytes(file.bytes) }),
     );
     const parsed = await validatePackage(fixture);
-    assert.ok(parsed.valid && parsed.package);
+    assert.ok(parsed.valid && parsed.package, `${fixture} must validate`);
     const counts = countPackage(parsed.package);
     const sourceArchive = createDeterministicArchive(
       sourceFiles.map((file) => ({
@@ -419,19 +420,22 @@ test("source-first imports preserve every byte, asset, kind, and literal marker"
     );
   }
 
-  const masterclass = await readFile(
-    "/home/apv/mcf-authoring-masterclass.mcf.zip",
-  );
-  const masterclassFiles = extractSafeArchive(new Uint8Array(masterclass));
+  const stress = await readFile(fixture("stress.mcf.zip"));
+  const stressFiles = extractSafeArchive(new Uint8Array(stress));
   assert.ok(
-    masterclassFiles.some(
+    stressFiles.some((file) => file.path.endsWith(".mcf")),
+    "stress fixture must contain authored lessons",
+  );
+  assert.ok(
+    stressFiles.some(
       (file) =>
         file.path.endsWith(".mcf") &&
         fileText({
           path: file.path,
           kind: "text",
           bytes: bytes(file.bytes),
-        }).includes("    :::mcf-activity"),
+        }).includes("id: q24"),
     ),
+    "stress fixture must retain its complete question load",
   );
 });

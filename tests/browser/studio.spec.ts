@@ -1,5 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 
+const fixtureRoot = `${process.cwd()}/fixtures/local`;
+const featureFixture = `${fixtureRoot}/feature-showcase.mcf.zip`;
+const mcf10Fixture = `${fixtureRoot}/minimal-1.0`;
+
 async function createCourse(page: Page) {
   await page.goto("/studio");
   await page.getByLabel("Package title").fill("Pilot Course");
@@ -133,9 +137,7 @@ test("imports feature source losslessly, exposes the regeneration boundary, and 
   await page.goto("/studio");
   await page
     .locator('input[type="file"][accept*=".zip"]')
-    .setInputFiles(
-      "/home/apv/examplecourses/archives/feature-showcase.mcf.zip",
-    );
+    .setInputFiles(featureFixture);
   await expect(
     page.getByRole("heading", { name: "MCF 1.1 Feature Showcase" }),
   ).toBeVisible();
@@ -149,7 +151,7 @@ test("imports feature source losslessly, exposes the regeneration boundary, and 
   await page.getByRole("button", { name: "Enable visual editing" }).click();
   await page.getByRole("button", { name: "questions", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Choose A.", exact: true }),
+    page.getByRole("heading", { name: /Which value equals/ }),
   ).toBeVisible();
   await page.getByRole("button", { name: "preview", exact: true }).click();
   await page.getByRole("button", { name: "Build preview" }).click();
@@ -372,7 +374,7 @@ test("imports an MCF 1.0 package directory without converting its version", asyn
   await page
     .getByText("Import package directory")
     .locator("input")
-    .setInputFiles("/home/apv/mcf-samples/minimal");
+    .setInputFiles(mcf10Fixture);
   const card = page.locator(".draft-card").filter({ hasText: "MCF 1.0" });
   await expect(card).toBeVisible();
   await card.getByRole("link", { name: "Open draft" }).click();

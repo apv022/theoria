@@ -24,7 +24,6 @@ export default async function ProfilePage({ params, searchParams }: Props) {
     ) || 1,
   );
   const platform = await serverPlatformClient();
-  const profile = await platform.profiles.getByHandle(handle);
 
   if (!platform.authentication.configured)
     return (
@@ -37,6 +36,22 @@ export default async function ProfilePage({ params, searchParams }: Props) {
         </Notice>
       </div>
     );
+
+  let profile;
+  try {
+    profile = await platform.profiles.getByHandle(handle);
+  } catch {
+    return (
+      <div className="page-wrap narrow-page">
+        <p className="section-label">Public profile</p>
+        <h1>@{handle.toLowerCase()}</h1>
+        <Notice title="Profile service unavailable">
+          This profile could not be loaded. Browse local Library, Reader, and
+          Studio normally, or reload this page to retry.
+        </Notice>
+      </div>
+    );
+  }
 
   if (!profile)
     return (

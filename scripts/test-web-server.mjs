@@ -16,6 +16,11 @@ let syncCursor = 0;
 let expired = false;
 let failNextUpload = false;
 let failRepository = false;
+let failProfile = false;
+let failNetwork = false;
+let failAuth = false;
+const requestCounts = new Map();
+const authRedirects = [];
 
 const json = (response, status, value, extra = {}) => {
   response.writeHead(status, {
@@ -163,6 +168,7 @@ const restResult = (request, response, value) => {
 
 const server = createServer(async (request, response) => {
   const url = new URL(request.url ?? "/", "http://127.0.0.1:55431");
+  requestCounts.set(url.pathname, (requestCounts.get(url.pathname) ?? 0) + 1);
   if (request.method === "OPTIONS") return json(response, 200, {});
   if (url.pathname === "/__test/reset") {
     profiles.clear();
@@ -180,6 +186,11 @@ const server = createServer(async (request, response) => {
     expired = false;
     failNextUpload = false;
     failRepository = false;
+    failProfile = false;
+    failNetwork = false;
+    failAuth = false;
+    requestCounts.clear();
+    authRedirects.length = 0;
     return json(response, 200, {});
   }
   if (url.pathname === "/__test/expire") {
@@ -194,6 +205,22 @@ const server = createServer(async (request, response) => {
     failRepository = true;
     return json(response, 200, {});
   }
+  if (url.pathname === "/__test/fail-profile") {
+    failProfile = true;
+    return json(response, 200, {});
+  }
+  if (url.pathname === "/__test/fail-network") {
+    failNetwork = true;
+    return json(response, 200, {});
+  }
+  if (url.pathname === "/__test/fail-auth") {
+    failAuth = true;
+    return json(response, 200, {});
+  }
+  if (url.pathname === "/__test/request-counts")
+    return json(response, 200, Object.fromEntries(requestCounts));
+  if (url.pathname === "/__test/auth-redirects")
+    return json(response, 200, authRedirects);
   if (url.pathname === "/__test/sync-state") {
     const user = authUser(request);
     return json(response, 200, {
@@ -295,6 +322,10 @@ const server = createServer(async (request, response) => {
   if (url.pathname === "/auth/v1/.well-known/jwks.json")
     return json(response, 200, { keys: [] });
   if (url.pathname === "/auth/v1/signup" && request.method === "POST") {
+    authRedirects.push({
+      type: "signup",
+      redirectTo: url.searchParams.get("redirect_to"),
+    });
     const value = await body(request);
     const handle = String(value.data?.handle ?? "")
       .trim()
@@ -363,6 +394,11 @@ const server = createServer(async (request, response) => {
     return json(response, 200, session(user));
   }
   if (url.pathname === "/auth/v1/user" && request.method === "GET") {
+    if (failAuth)
+      return json(response, 503, {
+        code: "AUTH_UNAVAILABLE",
+        msg: "Test account service unavailable",
+      });
     const user = expired ? undefined : authUser(request);
     return user
       ? json(response, 200, user)
@@ -379,7 +415,13 @@ const server = createServer(async (request, response) => {
     return json(response, 200, user);
   }
   if (url.pathname === "/auth/v1/logout") return json(response, 200, {});
-  if (url.pathname === "/auth/v1/recover") return json(response, 200, {});
+  if (url.pathname === "/auth/v1/recover") {
+    authRedirects.push({
+      type: "recovery",
+      redirectTo: url.searchParams.get("redirect_to"),
+    });
+    return json(response, 200, {});
+  }
   if (
     url.pathname === "/auth/v1/token" &&
     url.searchParams.get("grant_type") === "refresh_token"
@@ -390,6 +432,11 @@ const server = createServer(async (request, response) => {
       : json(response, 401, { msg: "Invalid refresh token" });
   }
   if (url.pathname === "/rest/v1/profiles" && request.method === "GET") {
+    if (failProfile)
+      return json(response, 503, {
+        code: "PROFILE_UNAVAILABLE",
+        message: "Test profile service unavailable",
+      });
     const profile = profileForQuery(url);
     const wantsObject = request.headers.accept?.includes(
       "application/vnd.pgrst.object",
@@ -469,6 +516,11 @@ const server = createServer(async (request, response) => {
     );
   }
   if (url.pathname === "/rest/v1/packages" && request.method === "GET") {
+    if (failRepository)
+      return json(response, 503, {
+        code: "REPOSITORY_UNAVAILABLE",
+        message: "Test repository unavailable",
+      });
     const user = authUser(request);
     const id = url.searchParams.get("id")?.replace(/^eq\./, "");
     const slug = url.searchParams.get("slug")?.replace(/^eq\./, "");
@@ -536,6 +588,11 @@ const server = createServer(async (request, response) => {
     url.pathname === "/rest/v1/rpc/repository_package_network" &&
     request.method === "POST"
   ) {
+    if (failNetwork)
+      return json(response, 503, {
+        code: "NETWORK_UNAVAILABLE",
+        message: "Test lineage unavailable",
+      });
     const value = await body(request);
     const user = authUser(request);
     const target = packages.get(value.requested_package_id);

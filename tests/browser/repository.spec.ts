@@ -177,19 +177,23 @@ test("search, filters, stable sorting, and pagination use shareable URLs", async
 }) => {
   await seed(page);
   await page.goto("/explore");
-  await page.getByLabel("Search packages").fill("calculus");
+  await page
+    .getByLabel("Search courses and learning resources")
+    .fill("calculus");
   await expect(page).toHaveURL(/\/explore$/);
   await expect(
     page
       .getByRole("heading", { name: "11 public packages", exact: true })
       .last(),
   ).toBeVisible();
-  await page.getByLabel("Search packages").press("Enter");
+  await page.getByLabel("Search courses and learning resources").press("Enter");
   await expect(page).toHaveURL(/q=calculus/);
   await expect(
     page.getByRole("heading", { name: "Calculus Foundations" }),
   ).toBeVisible();
-  await page.getByLabel("Search packages").fill("planetary");
+  await page
+    .getByLabel("Search courses and learning resources")
+    .fill("planetary");
   await expect(page).toHaveURL(/q=calculus/);
   await expect(
     page.getByRole("heading", { name: "Calculus Foundations" }),
@@ -201,14 +205,22 @@ test("search, filters, stable sorting, and pagination use shareable URLs", async
   ).toBeVisible();
   await page.goBack();
   await expect(page).toHaveURL(/q=calculus/);
-  await expect(page.getByLabel("Search packages")).toHaveValue("calculus");
+  await expect(
+    page.getByLabel("Search courses and learning resources"),
+  ).toHaveValue("calculus");
   await page.goForward();
   await expect(page).toHaveURL(/q=planetary/);
-  await expect(page.getByLabel("Search packages")).toHaveValue("planetary");
-  await page.getByLabel("Search packages").fill("derivative");
-  await page.getByLabel("Search packages").press("Enter");
-  await page.getByLabel("Search packages").fill("planetary");
-  await page.getByLabel("Search packages").press("Enter");
+  await expect(
+    page.getByLabel("Search courses and learning resources"),
+  ).toHaveValue("planetary");
+  await page
+    .getByLabel("Search courses and learning resources")
+    .fill("derivative");
+  await page.getByLabel("Search courses and learning resources").press("Enter");
+  await page
+    .getByLabel("Search courses and learning resources")
+    .fill("planetary");
+  await page.getByLabel("Search courses and learning resources").press("Enter");
   await expect(page).toHaveURL(/q=planetary/);
   await expect(
     page.getByRole("heading", { name: "Earth Science" }),
@@ -329,6 +341,43 @@ test("empty, offline, and repository-error states remain truthful", async ({
   await expect(
     page.getByRole("region", { name: "Repository unavailable" }).last(),
   ).toContainText("Test repository unavailable");
+});
+
+test("primary repository failures are bounded and lineage failures degrade locally", async ({
+  page,
+}) => {
+  await seed(page, [catalog[0]!]);
+  await page.request.post(`${fakeSupabase}/__test/fail-network`);
+  await page.goto("/packages/calculus-foundations");
+  await expect(
+    page.getByRole("heading", { name: "Calculus Foundations" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Lineage unavailable" }),
+  ).toBeVisible();
+  const counts = await page.request
+    .get(`${fakeSupabase}/__test/request-counts`)
+    .then((response) => response.json());
+  expect(counts["/rest/v1/rpc/repository_package_network"]).toBe(1);
+
+  await page.request.post(`${fakeSupabase}/__test/fail-repository`);
+  await page.goto("/packages/calculus-foundations");
+  await expect(
+    page.getByRole("heading", { name: "Repository unavailable" }),
+  ).toBeVisible();
+  await expect(page.getByText(/Local Library, Reader, Studio/)).toBeVisible();
+});
+
+test("profile service failures do not masquerade as missing profiles", async ({
+  page,
+}) => {
+  await seed(page, [catalog[0]!]);
+  await page.request.post(`${fakeSupabase}/__test/fail-profile`);
+  await page.goto("/profiles/catalog_author");
+  await expect(
+    page.getByRole("heading", { name: "Profile service unavailable" }),
+  ).toBeVisible();
+  await expect(page.getByText("No public profile")).not.toBeVisible();
 });
 
 test("repository source is validated before Add to Library and opens in Reader", async ({
