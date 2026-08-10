@@ -68,6 +68,11 @@ class FakeSupabase {
   user: User | null = null;
   expired = false;
   resetEmail?: string;
+  resendEmail?: string;
+  resendRedirect?: string;
+  verifiedTokenHash?: string;
+  softDeletedPackageId?: string;
+  confirmationRequired = false;
   password?: string;
   listener?: AuthListener;
   readonly profiles = new Map<string, Row>();
@@ -106,7 +111,9 @@ class FakeSupabase {
       return {
         data: {
           user: this.user,
-          session: { user: this.user } as Session,
+          session: this.confirmationRequired
+            ? null
+            : ({ user: this.user } as Session),
         },
         error: null,
       };
@@ -119,6 +126,28 @@ class FakeSupabase {
       this.user = null;
       this.listener?.("SIGNED_OUT", null);
       return { error: null };
+    },
+    verifyOtp: async ({ token_hash }: { token_hash: string; type: string }) => {
+      this.verifiedTokenHash = token_hash;
+      return {
+        data: {
+          user: this.user,
+          session: { user: this.user } as Session,
+        },
+        error: null,
+      };
+    },
+    resend: async ({
+      email,
+      options,
+    }: {
+      type: string;
+      email: string;
+      options: { emailRedirectTo: string };
+    }) => {
+      this.resendEmail = email;
+      this.resendRedirect = options.emailRedirectTo;
+      return { data: { user: null, session: null }, error: null };
     },
     resetPasswordForEmail: async (email: string) => {
       this.resetEmail = email;
@@ -139,6 +168,17 @@ class FakeSupabase {
         data: { subscription: { unsubscribe: () => undefined } },
       };
     },
+  };
+
+  rpc = async (name: string, args: { requested_package_id: string }) => {
+    if (name === "soft_delete_package") {
+      this.softDeletedPackageId = args.requested_package_id;
+      return {
+        data: [{ package_id: args.requested_package_id, deleted_at: "2026-08-10T00:00:00.000Z" }],
+        error: null,
+      };
+    }
+    return { data: [], error: null };
   };
 
   from() {
@@ -217,4 +257,40 @@ test("login, recovery, password change, logout, and expired sessions are explici
 
   fake.expired = true;
   assert.equal(await platform.authentication.currentIdentity(), null);
+});
+
+test("signup confirmation uses token-hash verification and resend through the adapter", async () => {
+  const fake = new FakeSupabase();
+  fake.confirmationRequired = true;
+  const platform = client(fake);
+  const signup = await platform.authentication.signUp({
+    email: " pending@example.test ",
+    password: "correct horse battery staple",
+    handle: "pending_creator",
+    displayName: "Pending Creator",
+    emailRedirectTo:
+      "https://theoria.example/auth/confirm?next=%2Fsettings%2Fprofile",
+  });
+  assert.equal(signup.identity, null);
+  assert.equal(signup.verificationRequired, true);
+
+  await platform.authentication.verifySignup("confirmation-token-hash");
+  assert.equal(fake.verifiedTokenHash, "confirmation-token-hash");
+
+  await platform.authentication.resendSignupConfirmation(
+    " pending@example.test ",
+    "https://theoria.example/auth/confirm?next=%2Fsettings%2Fprofile",
+  );
+  assert.equal(fake.resendEmail, "pending@example.test");
+  assert.equal(
+    fake.resendRedirect,
+    "https://theoria.example/auth/confirm?next=%2Fsettings%2Fprofile",
+  );
+});
+
+test("repository soft deletion stays behind the platform abstraction", async () => {
+  const fake = new FakeSupabase();
+  const platform = client(fake);
+  await platform.repository.softDeleteRepository("package-id");
+  assert.equal(fake.softDeletedPackageId, "package-id");
 });

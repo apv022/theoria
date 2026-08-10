@@ -3,14 +3,15 @@
 import { Button, Field, LinkButton, Notice } from "@theoria/ui";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { authCallbackUrl } from "../lib/auth-redirect";
+import { authCallbackUrl, authConfirmationUrl } from "../lib/auth-redirect";
 import { useAuth } from "./auth-provider";
 
-type AuthMode = "login" | "signup" | "forgot" | "reset";
+type AuthMode = "login" | "signup" | "resend" | "forgot" | "reset";
 
 const title: Record<AuthMode, string> = {
   login: "Sign in",
   signup: "Create an account",
+  resend: "Resend confirmation email",
   forgot: "Reset your password",
   reset: "Choose a new password",
 };
@@ -24,6 +25,15 @@ const message = (reason: unknown): string => {
   if (/refresh token|session.*missing|jwt.*expired/i.test(reason.message))
     return "Your session has expired. Sign in again.";
   return reason.message;
+};
+
+const resendMessage = (reason: unknown): string => {
+  if (
+    reason instanceof Error &&
+    /rate.?limit|too many|429|over_email_send_rate_limit/i.test(reason.message)
+  )
+    return "Too many confirmation emails were requested. Wait a little before trying again.";
+  return "We could not send a confirmation email right now. Try again later.";
 };
 
 export function AuthForm({
@@ -60,19 +70,27 @@ export function AuthForm({
           password,
           handle: String(data.get("handle") ?? ""),
           displayName: String(data.get("displayName") ?? ""),
-          emailRedirectTo: authCallbackUrl(
+          emailRedirectTo: authConfirmationUrl(
             "/settings/profile",
             location.origin,
           ),
         });
         if (result.verificationRequired)
           setSuccess(
-            "Check your email to verify the account, then return to sign in.",
+            "Check your email to confirm the account. You can open the link on any device.",
           );
         else {
           await reload();
           router.replace("/settings/profile");
         }
+      } else if (mode === "resend") {
+        await platform.authentication.resendSignupConfirmation(
+          email,
+          authConfirmationUrl("/settings/profile", location.origin),
+        );
+        setSuccess(
+          "If that address has an account awaiting confirmation, a confirmation email is on its way.",
+        );
       } else if (mode === "forgot") {
         await platform.authentication.requestPasswordReset(
           email,
@@ -87,7 +105,9 @@ export function AuthForm({
         router.replace("/settings");
       }
     })()
-      .catch((reason) => setError(message(reason)))
+      .catch((reason) =>
+        setError(mode === "resend" ? resendMessage(reason) : message(reason)),
+      )
       .finally(() => setBusy(false));
   };
 
@@ -181,9 +201,11 @@ export function AuthForm({
           ? "Working…"
           : mode === "forgot"
             ? "Send recovery email"
-            : mode === "reset"
-              ? "Update password"
-              : title[mode]}
+            : mode === "resend"
+              ? "Resend confirmation email"
+              : mode === "reset"
+                ? "Update password"
+                : title[mode]}
       </Button>
       {mode === "login" ? (
         <div className="auth-links">
@@ -192,6 +214,13 @@ export function AuthForm({
           </LinkButton>
           <LinkButton href="/forgot-password" secondary>
             Forgot password
+          </LinkButton>
+        </div>
+      ) : null}
+      {mode === "signup" && success ? (
+        <div className="auth-links">
+          <LinkButton href="/resend-confirmation" secondary>
+            Resend confirmation email
           </LinkButton>
         </div>
       ) : null}

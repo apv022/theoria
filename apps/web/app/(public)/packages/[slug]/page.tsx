@@ -2,6 +2,7 @@ import { Notice, Status } from "@theoria/ui";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { PublishedPackageActions } from "../../../../components/published-package-actions";
+import { RepositoryDeleteAction } from "../../../../components/repository-delete-action";
 import { PackageCover } from "../../../../components/package-cover";
 import { serverPlatformClient } from "../../../../lib/platform/server";
 
@@ -311,6 +312,11 @@ export default async function PackagePage({ params }: Props) {
           </>
         )}
       </section>
+      <RepositoryDeleteAction
+        packageId={packageValue.id}
+        ownerId={packageValue.ownerId}
+        slug={packageValue.slug}
+      />
     </div>
   );
 }

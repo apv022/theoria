@@ -57,6 +57,7 @@ type PackageRow = {
   latest_version_id: string | null;
   parent_package_id: string | null;
   parent_version_id: string | null;
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -187,6 +188,7 @@ export type SupabaseDatabase = {
           latest_version_id?: string | null;
           parent_package_id?: string | null;
           parent_version_id?: string | null;
+          deleted_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -196,6 +198,7 @@ export type SupabaseDatabase = {
           description?: string;
           visibility?: "public" | "unlisted" | "private";
           latest_version_id?: string | null;
+          deleted_at?: string | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -302,6 +305,10 @@ export type SupabaseDatabase = {
       set_package_star: {
         Args: { requested_package_id: string; requested_starred: boolean };
         Returns: { starred: boolean; star_count: number }[];
+      };
+      soft_delete_package: {
+        Args: { requested_package_id: string };
+        Returns: { package_id: string; deleted_at: string }[];
       };
       profile_repository_summary: {
         Args: { requested_handle: string };
@@ -573,6 +580,26 @@ class SupabaseAuthentication implements AuthenticationClient {
     if (error) throw error;
   }
 
+  async verifySignup(tokenHash: string): Promise<void> {
+    const { error } = await this.client.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: "email",
+    });
+    if (error) throw error;
+  }
+
+  async resendSignupConfirmation(
+    email: string,
+    redirectTo: string,
+  ): Promise<void> {
+    const { error } = await this.client.auth.resend({
+      type: "signup",
+      email: email.trim(),
+      options: { emailRedirectTo: redirectTo },
+    });
+    if (error) throw error;
+  }
+
   async requestPasswordReset(email: string, redirectTo: string): Promise<void> {
     const { error } = await this.client.auth.resetPasswordForEmail(
       email.trim(),
@@ -621,7 +648,7 @@ class SupabaseAuthentication implements AuthenticationClient {
 }
 
 const packageFields =
-  "id, owner_id, slug, title, description, visibility, latest_version_id, parent_package_id, parent_version_id, created_at, updated_at";
+  "id, owner_id, slug, title, description, visibility, latest_version_id, parent_package_id, parent_version_id, deleted_at, created_at, updated_at";
 const versionFields =
   "id, package_id, version, mcf_version, package_kind, source_storage_path, source_checksum, source_size, manifest_summary, validation_summary, release_notes, published_at";
 
@@ -925,6 +952,18 @@ class SupabaseRepository implements RepositoryClient {
       starred: data[0].starred,
       starCount: Number(data[0].star_count),
     };
+  }
+
+  async softDeleteRepository(packageId: string): Promise<void> {
+    const { error } = await this.client.rpc("soft_delete_package", {
+      requested_package_id: packageId,
+    });
+    if (error)
+      throw new PlatformOperationError(
+        "REPOSITORY_DELETE_FAILED",
+        error.message,
+        true,
+      );
   }
 
   async listStarred(page = 1, pageSize = 12): Promise<RepositoryResult> {

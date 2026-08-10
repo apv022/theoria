@@ -158,14 +158,13 @@ test("global surfaces fit all required mobile viewports", async ({ page }) => {
           document.documentElement.clientWidth,
       );
       expect(overflow, `${route} at ${size.width}px`).toBeLessThanOrEqual(1);
-      await expect(page.locator(".platform-mobile-menu summary")).toBeVisible();
+      await expect(
+        page.locator(".site-menu-button:visible, .workspace-menu-button:visible").first(),
+      ).toBeVisible();
     }
-    await page.locator(".platform-mobile-menu summary").click();
-    await expect(
-      page
-        .getByRole("navigation", { name: "Mobile navigation" })
-        .getByLabel("Theme"),
-    ).toBeVisible();
+    await page.locator(".workspace-menu-button:visible").click();
+    await expect(page.locator(".platform-primary[data-open]")).toBeVisible();
+    await expect(page.locator(".platform-primary[data-open]").getByLabel("Theme")).toBeVisible();
   }
 });
 
@@ -174,26 +173,17 @@ test("mobile navigation dismisses predictably and restores focus", async ({
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/explore");
-  const trigger = page.locator(".platform-mobile-menu summary");
+  const trigger = page.locator(".site-menu-button");
   await trigger.click();
-  await expect(page.locator(".platform-mobile-menu")).toHaveAttribute(
-    "open",
-    "",
-  );
+  await expect(page.locator(".site-sidebar[data-open]")).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(page.locator(".platform-mobile-menu")).not.toHaveAttribute(
-    "open",
-    "",
-  );
+  await expect(page.locator(".site-sidebar[data-open]")).toHaveCount(0);
   await expect(trigger).toBeFocused();
   await trigger.click();
   await page
-    .getByRole("navigation", { name: "Mobile navigation" })
+    .getByRole("navigation", { name: "More navigation" })
     .getByRole("link", { name: "Search courses" })
     .click();
   await expect(page).toHaveURL(/\/explore#search$/);
-  await expect(page.locator(".platform-mobile-menu")).not.toHaveAttribute(
-    "open",
-    "",
-  );
+  await expect(page.locator(".site-sidebar[data-open]")).toHaveCount(0);
 });

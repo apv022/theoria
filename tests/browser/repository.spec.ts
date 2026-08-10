@@ -507,3 +507,37 @@ test("stars and publishes a local fork with permanent release lineage", async ({
   await expect(page.getByText(/Forked from/)).toBeVisible();
   await expect(page.getByText(/version 1\.0\.0/)).toBeVisible();
 });
+
+test("owner soft-deletes a repository without erasing history or source", async ({
+  page,
+}) => {
+  await signup(page, "soft_delete_author");
+  await publishValidCourse(page);
+  await page.goto("/packages/reader-ready-course");
+
+  await expect(page.getByRole("heading", { name: "Delete repository" })).toBeVisible();
+  await page.getByRole("button", { name: "Delete repository" }).click();
+  const dialog = page.getByRole("dialog", { name: /Delete reader-ready-course/ });
+  await expect(dialog).toBeVisible();
+  const confirmation = dialog.getByLabel("Type reader-ready-course to confirm.");
+  await confirmation.fill("wrong-slug");
+  await expect(dialog.getByRole("button", { name: "Delete permanently" })).toBeDisabled();
+  await confirmation.fill("reader-ready-course");
+  await dialog.getByRole("button", { name: "Delete permanently" }).click();
+  await expect(page).toHaveURL(/\/repositories$/);
+  await expect(page.getByRole("heading", { name: "No published repositories" })).toBeVisible();
+
+  await page.goto("/packages/reader-ready-course");
+  await expect(page.getByText("Package unavailable")).toBeVisible();
+  await page.goto("/explore?q=reader-ready-course");
+  await expect(page.getByRole("heading", { name: "No public packages match." })).toBeVisible();
+  await page.goto("/profiles/soft_delete_author");
+  await expect(page.getByRole("heading", { name: "0 public packages" })).toBeVisible();
+
+  const state = await page.request
+    .get(`${fakeSupabase}/__test/repository-state?slug=reader-ready-course`)
+    .then((response) => response.json());
+  expect(state.package.deleted_at).toBeTruthy();
+  expect(state.versions).toHaveLength(1);
+  expect(state.sourceObjects).toHaveLength(1);
+});

@@ -60,6 +60,8 @@ export interface AuthenticationClient {
   signUp(request: SignUpRequest): Promise<AuthResult>;
   signIn(email: string, password: string): Promise<AccountIdentity>;
   signOut(): Promise<void>;
+  verifySignup(tokenHash: string): Promise<void>;
+  resendSignupConfirmation(email: string, redirectTo: string): Promise<void>;
   requestPasswordReset(email: string, redirectTo: string): Promise<void>;
   updatePassword(password: string): Promise<void>;
   exchangeCode(code: string): Promise<void>;
@@ -219,6 +221,8 @@ export interface RepositoryClient {
   downloadSource(slug: string, version: string): Promise<Blob>;
   getNetwork(packageId: string): Promise<RepositoryNetwork>;
   setStar(packageId: string, starred: boolean): Promise<StarResult>;
+  /** Tombstones the repository; immutable versions and lineage are retained. */
+  softDeleteRepository(packageId: string): Promise<void>;
   listStarred(page?: number, pageSize?: number): Promise<RepositoryResult>;
   listOwned(page?: number, pageSize?: number): Promise<RepositoryResult>;
 }
@@ -386,6 +390,12 @@ export function createUnavailablePlatformClient(): PlatformClient {
         throw unavailable();
       },
       async signOut() {},
+      async verifySignup() {
+        throw unavailable();
+      },
+      async resendSignupConfirmation() {
+        throw unavailable();
+      },
       async requestPasswordReset() {
         throw unavailable();
       },
@@ -467,6 +477,9 @@ export function createUnavailablePlatformClient(): PlatformClient {
         };
       },
       async setStar() {
+        return deferred();
+      },
+      async softDeleteRepository() {
         return deferred();
       },
       async listStarred() {
