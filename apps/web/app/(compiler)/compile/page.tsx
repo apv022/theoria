@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { CompilerWorkspace } from "@/components/compiler-workspace";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Browser compiler" };
+export const metadata: Metadata = { title: "Creation Studio" };
 
 export default function CompilePage() {
-  return <CompilerWorkspace />;
+  redirect("/studio?tool=compiler");
 }

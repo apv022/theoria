@@ -1335,7 +1335,7 @@ export function StudioDraftWorkspace({
         <h1>Draft unavailable</h1>
         <p>{error}</p>
         <Link className="button" href="/studio">
-          Return to Studio
+          Return to Creation Studio
         </Link>
       </div>
     );
@@ -1721,7 +1721,7 @@ export function StudioDraftWorkspace({
 
       <main className="creation-main">
         <header className="creation-toolbar">
-          <nav aria-label="Studio panels">
+          <nav aria-label="Creation Studio panels">
             {(
               [
                 "content",

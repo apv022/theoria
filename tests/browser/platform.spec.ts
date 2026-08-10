@@ -11,7 +11,7 @@ test("homepage is a compact dashboard with predictable navigation", async ({
   page,
 }) => {
   await page.goto("/");
-  const header = page.locator(".platform-header");
+  const header = page.locator(".app-header");
   await expect(header).toBeVisible();
   await expect(
     page.getByRole("heading", {
@@ -23,13 +23,10 @@ test("homepage is a compact dashboard with predictable navigation", async ({
     quickActions.getByRole("link", { name: "Open Library" }),
   ).toBeVisible();
   await expect(
-    quickActions.getByRole("link", { name: "Open Studio" }),
-  ).toBeVisible();
-  await expect(
-    quickActions.getByRole("link", { name: "Open Compiler" }),
+    quickActions.getByRole("link", { name: "Create a course" }),
   ).toBeVisible();
   const metrics = await page.evaluate(() => ({
-    header: document.querySelector(".platform-header")?.getBoundingClientRect()
+    header: document.querySelector(".app-header")?.getBoundingClientRect()
       .height,
     heading: Number.parseFloat(
       getComputedStyle(document.querySelector(".dashboard-intro h1")!).fontSize,
@@ -38,7 +35,7 @@ test("homepage is a compact dashboard with predictable navigation", async ({
       document.documentElement.scrollWidth -
       document.documentElement.clientWidth,
   }));
-  expect(metrics.header).toBeLessThanOrEqual(64);
+  expect(metrics.header).toBeLessThanOrEqual(72);
   expect(metrics.heading).toBeLessThanOrEqual(52);
   expect(metrics.horizontalOverflow).toBeLessThanOrEqual(1);
 
@@ -117,7 +114,7 @@ test("manifest, metadata, and permanent SVG mark are wired together", async ({
     "/manifest.webmanifest",
   );
   await expect(
-    page.locator('.platform-header .brand img[src*="theoria-mark.svg"]'),
+    page.locator('.app-header .brand img[src*="theoria-mark.svg"]'),
   ).toBeVisible();
   const manifest = await page.evaluate(async () =>
     fetch("/manifest.webmanifest").then((response) => response.json()),
@@ -149,22 +146,31 @@ test("visited Library app shell reopens offline without touching local data", as
 test("global surfaces fit all required mobile viewports", async ({ page }) => {
   for (const size of sizes) {
     await page.setViewportSize(size);
-    for (const route of ["/", "/library", "/studio", "/compile"]) {
+    for (const route of [
+      "/",
+      "/explore",
+      "/library",
+      "/studio",
+      "/studio?tool=compiler",
+    ]) {
       await page.goto(route);
-      await expect(page.locator(".platform-header")).toBeVisible();
+      await expect(page.locator(".app-header")).toBeVisible();
       const overflow = await page.evaluate(
         () =>
           document.documentElement.scrollWidth -
           document.documentElement.clientWidth,
       );
       expect(overflow, `${route} at ${size.width}px`).toBeLessThanOrEqual(1);
-      await expect(
-        page.locator(".site-menu-button:visible, .workspace-menu-button:visible").first(),
-      ).toBeVisible();
+      await expect(page.locator(".app-menu-button:visible")).toBeVisible();
     }
-    await page.locator(".workspace-menu-button:visible").click();
-    await expect(page.locator(".platform-primary[data-open]")).toBeVisible();
-    await expect(page.locator(".platform-primary[data-open]").getByLabel("Theme")).toBeVisible();
+    await page.locator(".app-menu-button:visible").click();
+    await expect(page.locator(".app-sidebar[data-open]")).toBeVisible();
+    await expect(
+      page
+        .getByRole("navigation", { name: "Primary navigation" })
+        .getByRole("link"),
+    ).toHaveCount(4);
+    await page.keyboard.press("Escape");
   }
 });
 
@@ -173,17 +179,17 @@ test("mobile navigation dismisses predictably and restores focus", async ({
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/explore");
-  const trigger = page.locator(".site-menu-button");
+  const trigger = page.locator(".app-menu-button");
   await trigger.click();
-  await expect(page.locator(".site-sidebar[data-open]")).toBeVisible();
+  await expect(page.locator(".app-sidebar[data-open]")).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(page.locator(".site-sidebar[data-open]")).toHaveCount(0);
+  await expect(page.locator(".app-sidebar[data-open]")).toHaveCount(0);
   await expect(trigger).toBeFocused();
   await trigger.click();
   await page
-    .getByRole("navigation", { name: "More navigation" })
-    .getByRole("link", { name: "Search courses" })
+    .getByRole("navigation", { name: "Primary navigation" })
+    .getByRole("link", { name: "Learn" })
     .click();
-  await expect(page).toHaveURL(/\/explore#search$/);
-  await expect(page.locator(".site-sidebar[data-open]")).toHaveCount(0);
+  await expect(page).toHaveURL(/\/library$/);
+  await expect(page.locator(".app-sidebar[data-open]")).toHaveCount(0);
 });

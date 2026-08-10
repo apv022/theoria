@@ -17,7 +17,7 @@ export default async function StarredCoursesPage() {
         <h1>Starred courses</h1>
         <Notice title="Account service unavailable">
           Your account and stars could not be checked. Local Library, Reader,
-          and Studio remain available; reload to retry.
+          and Creation Studio remain available; reload to retry.
         </Notice>
       </div>
     );

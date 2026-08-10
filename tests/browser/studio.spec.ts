@@ -13,22 +13,22 @@ async function createCourse(page: Page) {
   await expect(page.getByText("valid", { exact: true })).toBeVisible();
 }
 
-test("Studio shell controls retain contrast and full source paths remain readable", async ({
+test("Creation Studio shell controls retain contrast and full source paths remain readable", async ({
   page,
 }) => {
   await createCourse(page);
-  const colors = await page.locator(".studio-header").evaluate((header) => {
-    const link = header.querySelector("a");
+  const colors = await page.locator(".app-sidebar").evaluate((sidebar) => {
+    const link = sidebar.querySelector("a");
     return {
-      background: getComputedStyle(header).backgroundColor,
-      foreground: getComputedStyle(header).color,
+      background: getComputedStyle(sidebar).backgroundColor,
+      foreground: getComputedStyle(sidebar).color,
       link: link ? getComputedStyle(link).color : "",
     };
   });
   expect(colors).toEqual({
-    background: "rgb(32, 35, 31)",
-    foreground: "rgb(255, 255, 255)",
-    link: "rgb(255, 255, 255)",
+    background: "rgb(17, 23, 19)",
+    foreground: "rgb(241, 245, 240)",
+    link: "rgb(241, 245, 240)",
   });
   const lessonSource = page.getByRole("button", {
     name: "chapters/introduction/lessons/welcome.mcf",

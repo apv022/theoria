@@ -29,8 +29,8 @@ export default async function OwnedRepositoriesPage({
       <div className="page-wrap narrow-page">
         <h1>My repositories</h1>
         <Notice title="Account service unavailable">
-          Your repositories could not be checked. Local Studio, Library, and
-          Reader remain available. Reload this page to retry.
+          Your repositories could not be checked. Local Creation Studio,
+          Library, and Reader remain available. Reload this page to retry.
         </Notice>
       </div>
     );
@@ -43,7 +43,7 @@ export default async function OwnedRepositoriesPage({
           Private and unlisted work is visible only to its owner.
           <span className="actions">
             <Link href="/login?next=/repositories">Sign in</Link>
-            <Link href="/studio">Open local Studio</Link>
+            <Link href="/studio">Open local Creation Studio</Link>
           </span>
         </Notice>
       </div>
@@ -59,7 +59,8 @@ export default async function OwnedRepositoriesPage({
         <h1>My repositories</h1>
         <Notice title="Repository service unavailable">
           Owned repositories could not be loaded. Nothing was removed. Local
-          Studio, Library, and Reader remain available; reload to retry.
+          Creation Studio, Library, and Reader remain available; reload to
+          retry.
         </Notice>
       </div>
     );
@@ -113,7 +114,8 @@ export default async function OwnedRepositoriesPage({
           </div>
         ) : (
           <Notice title="No published repositories">
-            Publish from Studio when you are ready. Local drafts remain local.
+            Publish from Creation Studio when you are ready. Local drafts remain
+            local.
           </Notice>
         )}
         <RepositoryPagination

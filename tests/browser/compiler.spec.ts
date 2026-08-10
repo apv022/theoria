@@ -99,7 +99,7 @@ test("keeps the UI responsive while compiling the deterministic stress fixture",
 }) => {
   await page.locator('input[type="file"]').first().setInputFiles(stress);
   await page.getByRole("button", { name: "Compile package" }).click();
-  await expect(page.locator(".compiler-header")).toBeVisible();
+  await expect(page.locator(".app-header")).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Package ready" }),
   ).toBeVisible();

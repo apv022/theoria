@@ -19,7 +19,8 @@ export default async function PackageVersionPage({
       <div className="page-wrap narrow-page">
         <h1>{slug.replaceAll("-", " ")}</h1>
         <Notice title="Repository is not configured">
-          Local Studio, Library, Reader, and exports remain fully available.
+          Local Creation Studio, Library, Reader, and exports remain fully
+          available.
         </Notice>
       </div>
     );

@@ -22,7 +22,8 @@ export default async function PackagePage({ params }: Props) {
       <div className="page-wrap narrow-page">
         <h1>{slug.replaceAll("-", " ")}</h1>
         <Notice title="Repository is not configured">
-          Local Studio, Library, Reader, and exports remain fully available.
+          Local Creation Studio, Library, Reader, and exports remain fully
+          available.
         </Notice>
       </div>
     );
@@ -34,8 +35,8 @@ export default async function PackagePage({ params }: Props) {
       <div className="page-wrap narrow-page">
         <h1>Repository unavailable</h1>
         <Notice title="Package service unavailable">
-          This package could not be loaded. Local Library, Reader, Studio, and
-          exports remain available; reload to retry.
+          This package could not be loaded. Local Library, Reader, Creation
+          Studio, and exports remain available; reload to retry.
         </Notice>
       </div>
     );

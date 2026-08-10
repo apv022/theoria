@@ -39,14 +39,15 @@ export function Onboarding() {
         <li>
           <strong>Create</strong>
           <span>
-            Studio works locally; cloud sync is optional and requires consent.
+            Creation Studio works locally; cloud sync is optional and requires
+            consent.
           </span>
         </li>
       </ol>
       <div className="actions">
         <LinkButton href="/explore">Explore courses</LinkButton>
         <LinkButton href="/studio" secondary>
-          Open Studio
+          Open Creation Studio
         </LinkButton>
         <Button
           className="button-secondary"
