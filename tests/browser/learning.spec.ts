@@ -16,6 +16,9 @@ async function importSmall(page: Page) {
   await expect(
     page.getByText("This is the smallest useful MCF 1.1 course."),
   ).toBeVisible();
+  await expect(page.locator(".app-shell")).toHaveCount(1);
+  await expect(page.locator(".app-sidebar-primary a")).toHaveCount(4);
+  await expect(page.locator(".reader-header")).toHaveCount(0);
 }
 
 test("source import validates into the library and resumes exact progress", async ({

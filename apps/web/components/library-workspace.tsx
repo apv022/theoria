@@ -451,7 +451,7 @@ export function LibraryWorkspace() {
           </p>
           <div className="actions empty-state-actions">
             <LinkButton href="/explore">Explore courses</LinkButton>
-            <LinkButton href="/compile" secondary>
+            <LinkButton href="/studio?tool=compiler" secondary>
               Open import tools
             </LinkButton>
           </div>

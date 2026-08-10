@@ -1041,7 +1041,12 @@ function ReaderCoursePresentation({
           </div>
           <strong>{percentage}% complete</strong>
           {mode === "reader" ? (
-            <SyncStatus category="progress" stableId={progress.packageId} />
+            <>
+              <SyncStatus category="progress" stableId={progress.packageId} />
+              <Link className="reader-exit-link" href="/library">
+                Exit reader
+              </Link>
+            </>
           ) : null}
         </div>
         <button
@@ -1307,7 +1312,8 @@ export function ReaderExperience({
           </Link>
         ) : (
           <p>
-            Return to Studio and rebuild the preview after fixing the draft.
+            Return to Creation Studio and rebuild the preview after fixing the
+            draft.
           </p>
         )}
       </div>

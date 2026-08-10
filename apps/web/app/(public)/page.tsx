@@ -52,10 +52,7 @@ export default async function HomePage() {
           Open Library
         </LinkButton>
         <LinkButton href="/studio" secondary>
-          Open Studio
-        </LinkButton>
-        <LinkButton href="/compile" secondary>
-          Open Compiler
+          Create a course
         </LinkButton>
         <Status tone="positive">Local-first · account optional</Status>
       </nav>
@@ -73,7 +70,7 @@ export default async function HomePage() {
         {unavailable ? (
           <Notice title="Repository unavailable">
             Public courses could not be loaded. Work saved in this browser
-            remains available through Library, Studio, and the compiler.
+            remains available through Library and Creation Studio.
           </Notice>
         ) : recent.length ? (
           <div className="repository-grid">

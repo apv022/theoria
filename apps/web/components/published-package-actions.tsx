@@ -284,14 +284,14 @@ export function PublishedPackageActions({
           disabled={busy}
           onClick={() => openInStudio(false)}
         >
-          {busy ? "Preparing…" : "Open in Studio"}
+          {busy ? "Preparing…" : "Open in Creation Studio"}
         </Button>
         <Button disabled={busy} onClick={() => openInStudio(true)}>
           {busy
             ? "Preparing…"
             : initialNetwork
-              ? `Fork into Studio · ${initialNetwork.forkCount}`
-              : "Fork into Studio"}
+              ? `Fork into Creation Studio · ${initialNetwork.forkCount}`
+              : "Fork into Creation Studio"}
         </Button>
       </div>
       <div className="actions repository-download-row">

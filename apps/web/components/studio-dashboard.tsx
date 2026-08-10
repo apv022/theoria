@@ -272,7 +272,7 @@ export function StudioDashboard() {
 
       {error ? (
         <div className="storage-error" role="alert">
-          <strong>Studio unavailable</strong>
+          <strong>Creation Studio unavailable</strong>
           <p>{error}</p>
           <Button className="button-secondary" onClick={() => void refresh()}>
             Retry
@@ -290,7 +290,7 @@ export function StudioDashboard() {
           <p className="section-label">New package</p>
           <h2 id="create-heading">Start a course or import existing work.</h2>
           <p className="technical-note">
-            Studio creates and imports valid MCF 1.1 source packages.
+            Creation Studio creates and imports valid MCF 1.1 source packages.
           </p>
         </div>
         <label className="field">

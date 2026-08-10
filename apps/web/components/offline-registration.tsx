@@ -63,7 +63,8 @@ export function OfflineRegistration() {
     <div className="runtime-notices" aria-live="polite">
       {offline ? (
         <p className="offline-banner" role="status">
-          Offline — Library, Reader progress, and Studio drafts remain local.
+          Offline — Library, Reader progress, and Creation Studio drafts remain
+          local.
         </p>
       ) : null}
       {update ? (

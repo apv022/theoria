@@ -123,7 +123,7 @@ export default async function ExplorePage({
       <ExploreControls query={parsed.display} subjects={subjects} />
       {error ? (
         <Notice title="Repository unavailable">
-          {error} Local Library, Reader, Studio, and compiler workflows remain
+          {error} Local Library, Reader, and Creation Studio workflows remain
           available offline.
         </Notice>
       ) : (
