@@ -49,3 +49,15 @@ export function authCallbackUrl(next: string, currentOrigin: string): string {
   callback.searchParams.set("next", safeNextPath(next));
   return callback.toString();
 }
+
+export function authConfirmationUrl(
+  next: string,
+  currentOrigin: string,
+): string {
+  const confirmation = new URL(
+    "/auth/confirm",
+    canonicalSiteOrigin(currentOrigin),
+  );
+  confirmation.searchParams.set("next", safeNextPath(next));
+  return confirmation.toString();
+}

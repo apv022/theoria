@@ -4,6 +4,7 @@ import { createServer } from "node:http";
 const profiles = new Map();
 const users = new Map();
 const tokens = new Map();
+const confirmationTokens = new Map();
 const packages = new Map();
 const packageVersions = new Map();
 const packageStars = new Map();
@@ -19,6 +20,7 @@ let failRepository = false;
 let failProfile = false;
 let failNetwork = false;
 let failAuth = false;
+let requireConfirmation = false;
 const requestCounts = new Map();
 const authRedirects = [];
 
@@ -112,6 +114,7 @@ const profileForQuery = (url) => {
 
 const visiblePackage = (value, user) =>
   value &&
+  !value.deleted_at &&
   (value.visibility === "public" ||
     value.visibility === "unlisted" ||
     value.owner_id === user?.id);
@@ -148,7 +151,7 @@ const repositoryRow = (packageValue, version, profile, totalCount) => ({
 
 const repositoryValues = () =>
   [...packages.values()].flatMap((packageValue) => {
-    if (packageValue.visibility !== "public") return [];
+    if (packageValue.deleted_at || packageValue.visibility !== "public") return [];
     const version = packageVersions.get(packageValue.latest_version_id);
     const profile = profiles.get(packageValue.owner_id);
     return version && profile ? [{ packageValue, version, profile }] : [];
@@ -174,6 +177,7 @@ const server = createServer(async (request, response) => {
     profiles.clear();
     users.clear();
     tokens.clear();
+    confirmationTokens.clear();
     packages.clear();
     packageVersions.clear();
     packageStars.clear();
@@ -189,6 +193,7 @@ const server = createServer(async (request, response) => {
     failProfile = false;
     failNetwork = false;
     failAuth = false;
+    requireConfirmation = false;
     requestCounts.clear();
     authRedirects.length = 0;
     return json(response, 200, {});
@@ -196,6 +201,19 @@ const server = createServer(async (request, response) => {
   if (url.pathname === "/__test/expire") {
     expired = true;
     return json(response, 200, {});
+  }
+  if (url.pathname === "/__test/require-confirmation") {
+    requireConfirmation = true;
+    return json(response, 200, {});
+  }
+  if (url.pathname === "/__test/confirmation-token") {
+    const email = url.searchParams.get("email");
+    const entry = [...confirmationTokens.entries()].find(
+      ([, value]) => users.get(value.userId)?.email === email && !value.used,
+    );
+    return json(response, entry ? 200 : 404, {
+      tokenHash: entry?.[0] ?? null,
+    });
   }
   if (url.pathname === "/__test/fail-upload") {
     failNextUpload = true;
@@ -219,6 +237,23 @@ const server = createServer(async (request, response) => {
   }
   if (url.pathname === "/__test/request-counts")
     return json(response, 200, Object.fromEntries(requestCounts));
+  if (url.pathname === "/__test/repository-state") {
+    const slug = url.searchParams.get("slug");
+    const value = [...packages.values()].find((candidate) => candidate.slug === slug);
+    const versions = value
+      ? [...packageVersions.values()].filter((candidate) => candidate.package_id === value.id)
+      : [];
+    const sourcePaths = versions.map((version) => version.source_storage_path);
+    return json(response, value ? 200 : 404, {
+      package: value ?? null,
+      versions,
+      stars: value
+        ? [...packageStars.values()].filter((star) => star.packageId === value.id)
+        : [],
+      sourcePaths,
+      sourceObjects: sourcePaths.filter((path) => sourceObjects.has(path)),
+    });
+  }
   if (url.pathname === "/__test/auth-redirects")
     return json(response, 200, authRedirects);
   if (url.pathname === "/__test/sync-state") {
@@ -311,6 +346,7 @@ const server = createServer(async (request, response) => {
         parent_version_id: seed.parentVersionId ?? null,
         created_at: publishedAt,
         updated_at: seed.updatedAt ?? publishedAt,
+        deleted_at: null,
       });
       sourceObjects.set(path, {
         ownerId: profile.id,
@@ -352,7 +388,7 @@ const server = createServer(async (request, response) => {
       aud: "authenticated",
       role: "authenticated",
       email: value.email,
-      email_confirmed_at: now,
+      email_confirmed_at: requireConfirmation ? null : now,
       phone: "",
       app_metadata: { provider: "email", providers: ["email"] },
       user_metadata: value.data ?? {},
@@ -374,7 +410,41 @@ const server = createServer(async (request, response) => {
     };
     users.set(id, user);
     profiles.set(id, profile);
+    if (requireConfirmation) {
+      const tokenHash = `confirmation-${crypto.randomUUID()}`;
+      confirmationTokens.set(tokenHash, { userId: id, used: false });
+      return json(response, 200, user);
+    }
     return json(response, 200, session(user));
+  }
+  if (url.pathname === "/auth/v1/verify" && request.method === "POST") {
+    const value = await body(request);
+    const pending = confirmationTokens.get(value.token_hash);
+    const user = pending ? users.get(pending.userId) : undefined;
+    if (!pending || pending.used || !user || value.type !== "email")
+      return json(response, 403, {
+        code: "otp_expired",
+        msg: "Token has expired or is invalid",
+      });
+    pending.used = true;
+    user.email_confirmed_at = new Date().toISOString();
+    user.updated_at = user.email_confirmed_at;
+    return json(response, 200, session(user));
+  }
+  if (url.pathname === "/auth/v1/resend" && request.method === "POST") {
+    const value = await body(request);
+    authRedirects.push({
+      type: "resend",
+      redirectTo: url.searchParams.get("redirect_to"),
+    });
+    const user = [...users.values()].find(
+      (candidate) => candidate.email === value.email,
+    );
+    if (user && !user.email_confirmed_at && value.type === "signup") {
+      const tokenHash = `confirmation-${crypto.randomUUID()}`;
+      confirmationTokens.set(tokenHash, { userId: user.id, used: false });
+    }
+    return json(response, 200, {});
   }
   if (
     url.pathname === "/auth/v1/token" &&
@@ -531,7 +601,9 @@ const server = createServer(async (request, response) => {
         response,
         [...packages.values()].filter(
           (candidate) =>
-            candidate.owner_id === ownerId && candidate.owner_id === user?.id,
+            candidate.owner_id === ownerId &&
+            candidate.owner_id === user?.id &&
+            !candidate.deleted_at,
         ),
       );
     const value = [...packages.values()].find(
@@ -556,7 +628,9 @@ const server = createServer(async (request, response) => {
     if (!profile) return json(response, 200, []);
     const publicPackages = [...packages.values()].filter(
       (candidate) =>
-        candidate.owner_id === profile.id && candidate.visibility === "public",
+        candidate.owner_id === profile.id &&
+        candidate.visibility === "public" &&
+        !candidate.deleted_at,
     );
     const releases = [...packageVersions.values()]
       .filter((release) =>
@@ -608,6 +682,7 @@ const server = createServer(async (request, response) => {
       .filter(
         (candidate) =>
           candidate.parent_package_id === target.id &&
+          !candidate.deleted_at &&
           candidate.visibility === "public",
       )
       .map((candidate) => ({
@@ -671,6 +746,28 @@ const server = createServer(async (request, response) => {
           (star) => star.packageId === target.id,
         ).length,
       },
+    ]);
+  }
+  if (
+    url.pathname === "/rest/v1/rpc/soft_delete_package" &&
+    request.method === "POST"
+  ) {
+    const user = authUser(request);
+    if (!user)
+      return json(response, 401, {
+        code: "42501",
+        message: "Authentication required",
+      });
+    const value = await body(request);
+    const target = packages.get(value.requested_package_id);
+    if (!target || target.owner_id !== user.id)
+      return json(response, 403, {
+        code: "42501",
+        message: "Repository is unavailable",
+      });
+    target.deleted_at ??= new Date().toISOString();
+    return json(response, 200, [
+      { package_id: target.id, deleted_at: target.deleted_at },
     ]);
   }
   if (
@@ -1001,6 +1098,7 @@ const server = createServer(async (request, response) => {
     const parent = packages.get(value.candidate_package_id);
     const available =
       parent?.owner_id === user.id &&
+      !parent.deleted_at &&
       ![...packageVersions.values()].some(
         (candidate) =>
           candidate.package_id === value.candidate_package_id &&
@@ -1059,6 +1157,11 @@ const server = createServer(async (request, response) => {
       });
     }
     const existing = packages.get(value.requested_package_id);
+    if (existing?.deleted_at)
+      return json(response, 403, {
+        code: "42501",
+        message: "deleted repositories cannot receive new versions",
+      });
     if (existing && existing.owner_id !== user.id)
       return json(response, 403, {
         code: "42501",
@@ -1082,6 +1185,7 @@ const server = createServer(async (request, response) => {
       );
       if (
         !visiblePackage(parent, user) ||
+        parent.deleted_at ||
         parentVersion?.package_id !== parent?.id
       )
         return json(response, 403, {
@@ -1146,6 +1250,7 @@ const server = createServer(async (request, response) => {
         existing?.parent_version_id ??
         value.requested_parent_version_id ??
         null,
+      deleted_at: existing?.deleted_at ?? null,
       created_at: existing?.created_at ?? now,
       updated_at: now,
     });

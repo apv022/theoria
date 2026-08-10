@@ -16,6 +16,34 @@ async function signup(page: Page, handle = "creator_one") {
   await expect(page).toHaveURL(/\/settings\/profile$/);
 }
 
+async function pendingSignup(page: Page, handle: string) {
+  await page.goto("/signup");
+  await page.getByLabel("Email").fill(`${handle}@example.test`);
+  await page.getByLabel("Handle").fill(handle);
+  await page.getByLabel("Display name").fill("Pending Creator");
+  await page.getByLabel("Password").fill("correct horse battery staple");
+  await page.getByRole("button", { name: "Create an account" }).click();
+  await expect(page.getByText(/open the link on any device/)).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Resend confirmation email" }),
+  ).toBeVisible();
+}
+
+async function confirmationToken(page: Page, email: string) {
+  return page.request
+    .get(`${fakeSupabase}/__test/confirmation-token?email=${email}`)
+    .then(async (response) => {
+      expect(response.ok()).toBe(true);
+      return (await response.json()).tokenHash as string;
+    });
+}
+
+async function requestCounts(page: Page) {
+  return page.request
+    .get(`${fakeSupabase}/__test/request-counts`)
+    .then((response) => response.json() as Promise<Record<string, number>>);
+}
+
 test.beforeEach(async ({ page }) => resetAccounts(page));
 
 test("signup restores its session, edits a public profile, and explicitly claims a local draft", async ({
@@ -138,7 +166,7 @@ test("email links use the canonical callback and unsafe next paths stay local", 
     {
       type: "signup",
       redirectTo:
-        "http://127.0.0.1:3000/auth/callback?next=%2Fsettings%2Fprofile",
+        "http://127.0.0.1:3000/auth/confirm?next=%2Fsettings%2Fprofile",
     },
     {
       type: "recovery",
@@ -155,4 +183,91 @@ test("email links use the canonical callback and unsafe next paths stay local", 
   await expect(page.locator(".form-message[role=alert]")).toContainText(
     "account link is incomplete",
   );
+});
+
+test("token-hash signup confirmation establishes a session on another device and keeps redirects local", async ({
+  page,
+  browser,
+}) => {
+  await page.request.post(`${fakeSupabase}/__test/require-confirmation`);
+  await pendingSignup(page, "cross_device");
+  const firstToken = await confirmationToken(page, "cross_device@example.test");
+
+  const secondDevice = await browser.newContext();
+  const confirmationPage = await secondDevice.newPage();
+  await confirmationPage.goto(
+    `/auth/confirm?token_hash=${firstToken}&type=email&next=%2Fsettings`,
+  );
+  await expect(
+    confirmationPage.getByRole("heading", {
+      name: "Confirm your email address",
+    }),
+  ).toBeVisible();
+  expect((await requestCounts(confirmationPage))["/auth/v1/verify"] ?? 0).toBe(0);
+  await confirmationPage
+    .getByRole("button", { name: "Confirm email address" })
+    .click();
+  await expect(confirmationPage).toHaveURL(/\/settings$/);
+  await expect(
+    confirmationPage.getByText("cross_device@example.test"),
+  ).toBeVisible();
+  expect((await requestCounts(confirmationPage))["/auth/v1/verify"]).toBe(1);
+
+  await pendingSignup(page, "safe_redirect");
+  const secondToken = await confirmationToken(
+    page,
+    "safe_redirect@example.test",
+  );
+  await confirmationPage.goto(
+    `/auth/confirm?token_hash=${secondToken}&type=email&next=//example.test/escaped`,
+  );
+  await confirmationPage
+    .getByRole("button", { name: "Confirm email address" })
+    .click();
+  await expect(confirmationPage).toHaveURL(/\/settings\/profile$/);
+  await expect(confirmationPage).not.toHaveURL(/example\.test/);
+  await secondDevice.close();
+});
+
+test("invalid confirmation recovers through a non-enumerating manual resend", async ({
+  page,
+}) => {
+  await page.goto(
+    "/auth/confirm?token_hash=expired-token&type=email&next=%2Fsettings",
+  );
+  await expect(
+    page.getByRole("heading", { name: "Confirm your email address" }),
+  ).toBeVisible();
+  expect((await requestCounts(page))["/auth/v1/verify"] ?? 0).toBe(0);
+  await page.getByRole("button", { name: "Confirm email address" }).click();
+  await expect(page).toHaveURL(/\/resend-confirmation\?error=/);
+  await expect(page.locator(".form-message[role=alert]")).toContainText(
+    "invalid, expired, or has already been used",
+  );
+
+  await page.getByLabel("Email").fill("unknown@example.test");
+  await page.getByRole("button", { name: "Resend confirmation email" }).click();
+  const genericMessage =
+    "If that address has an account awaiting confirmation, a confirmation email is on its way.";
+  await expect(page.getByRole("status")).toHaveText(genericMessage);
+
+  await page.getByLabel("Email").fill("another-unknown@example.test");
+  await page.getByRole("button", { name: "Resend confirmation email" }).click();
+  await expect(page.getByRole("status")).toHaveText(genericMessage);
+
+  const redirects = await page.request
+    .get(`${fakeSupabase}/__test/auth-redirects`)
+    .then((response) => response.json());
+  expect(redirects).toEqual([
+    {
+      type: "resend",
+      redirectTo:
+        "http://127.0.0.1:3000/auth/confirm?next=%2Fsettings%2Fprofile",
+    },
+    {
+      type: "resend",
+      redirectTo:
+        "http://127.0.0.1:3000/auth/confirm?next=%2Fsettings%2Fprofile",
+    },
+  ]);
 });
