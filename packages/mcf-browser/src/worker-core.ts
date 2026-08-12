@@ -4,7 +4,7 @@ import {
   type ValidationDiagnostic,
   type ValidationSummary,
 } from "@theoria/package-model";
-import type { Diagnostic, McfPackage } from "mcf-npm/model";
+import type { Diagnostic } from "mcf-npm/model";
 import { validatePackage } from "mcf-npm/package";
 import {
   ArchiveSecurityError,
@@ -13,7 +13,12 @@ import {
   normalizeDirectoryFiles,
 } from "./archive";
 import { compileLearnerPackage, countPackage } from "./compiler";
-import type { EngineProgress, EngineResult, PackageInput } from "./types";
+import type {
+  EngineProgress,
+  EngineResult,
+  PackageInput,
+  ReaderPackage,
+} from "./types";
 import { isLearnerRenderable } from "./types";
 import { clearVirtualFiles, mountVirtualFiles, type VirtualFile } from "./vfs";
 
@@ -79,7 +84,54 @@ const learningOutcomes = (
   return outcomes.length ? outcomes : undefined;
 };
 
-export function packageManifestFromMcf(value: McfPackage): PackageManifest {
+export const supportedMcfVersion = "1.1" as const;
+export const mcf10DeprecationMessage =
+  "MCF 1.0 is no longer supported. Theoria currently supports MCF 1.1.";
+
+const declaredMcfVersion = (
+  files: readonly VirtualFile[],
+): string | undefined => {
+  const manifest = files.find((file) => file.path === "manifest.yaml");
+  if (!manifest) return undefined;
+  const source = new TextDecoder().decode(manifest.bytes);
+  const match = /^\s*mcf\s*:\s*(?:["']([^"']+)["']|([^\s#]+))/m.exec(source);
+  return (match?.[1] ?? match?.[2])?.trim();
+};
+
+export const unsupportedMcfVersionReason = (
+  version: string,
+): string | undefined =>
+  version === supportedMcfVersion
+    ? undefined
+    : version === "1.0"
+      ? mcf10DeprecationMessage
+      : `MCF ${version} is not supported. Theoria currently supports MCF ${supportedMcfVersion}.`;
+
+const unsupportedVersionResult = (
+  requestId: string,
+  operation: "inspect" | "validate" | "compile",
+  inputName: string,
+  version: string,
+): EngineResult => {
+  const reason =
+    unsupportedMcfVersionReason(version) ?? "Unsupported MCF version.";
+  return {
+    requestId,
+    operation,
+    status: "unsupported",
+    reason,
+    diagnostics: [
+      {
+        code: "MCF_VERSION_UNSUPPORTED",
+        severity: "error",
+        file: inputName,
+        message: reason,
+      },
+    ],
+  };
+};
+
+export function packageManifestFromMcf(value: ReaderPackage): PackageManifest {
   const raw = value as unknown as Record<string, unknown>;
   const subjects = stringList(value.subjects);
   const keywords = stringList(value.keywords);
@@ -151,6 +203,15 @@ export async function executeEngineRequest(
       files = normalizeDirectoryFiles(input.files);
       sourceArchive = createDeterministicArchive(files);
     }
+    const declaredVersion = declaredMcfVersion(files);
+    if (declaredVersion && declaredVersion !== supportedMcfVersion) {
+      return unsupportedVersionResult(
+        requestId,
+        operation,
+        input.name,
+        declaredVersion,
+      );
+    }
     if (isCancelled()) return { requestId, operation, status: "cancelled" };
     mountVirtualFiles(files);
     progress(
@@ -174,7 +235,7 @@ export async function executeEngineRequest(
     if (isCancelled()) return { requestId, operation, status: "cancelled" };
     const counts = countPackage(result.package);
     const summary = {
-      manifest: packageManifestFromMcf(result.package),
+      manifest: packageManifestFromMcf(result.package as ReaderPackage),
       lessonCount: counts.lessons,
       activityCount: counts.activities,
       questionCount: counts.questions,
@@ -217,7 +278,7 @@ export async function executeEngineRequest(
       operation,
       status: "ok",
       summary,
-      readerPackage: result.package,
+      readerPackage: result.package as ReaderPackage,
       sourceFiles: files.map((file) => ({
         path: file.path,
         bytes: buffer(file.bytes),

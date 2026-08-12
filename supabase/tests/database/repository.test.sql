@@ -110,11 +110,11 @@ values
     'bbbbbbbb-1000-4000-8000-000000000002',
     'bbbbbbbb-0000-4000-8000-000000000002',
     '1.0.0',
-    '1.0',
+    '1.1',
     'module',
     'packages/10000000-0000-0000-0000-000000000001/bbbbbbbb-0000-4000-8000-000000000002/1.0.0/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.mcf.zip',
     'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
-    '{"mcf":"1.0","kind":"module","id":"geometry-studio","title":"Geometry Studio","version":"1.0.0","language":"fr","authors":[],"subjects":["mathematics"],"keywords":["angles"],"level":{"identifier":"secondary"},"learningOutcomes":[{"statement":"Construct geometric proofs."}]}',
+    '{"mcf":"1.1","kind":"module","id":"geometry-studio","title":"Geometry Studio","version":"1.0.0","language":"fr","authors":[],"subjects":["mathematics"],"keywords":["angles"],"level":{"identifier":"secondary"},"learningOutcomes":[{"statement":"Construct geometric proofs."}]}',
     '{"state":"valid","diagnostics":[]}',
     '',
     '2026-07-29T02:00:00Z'

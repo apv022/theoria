@@ -113,7 +113,7 @@ export function CompilerWorkspace() {
     void engine.initialize().then((state) => {
       setEngineStatus(
         state.status === "ready"
-          ? "Worker ready · MCF 1.0 + 1.1"
+          ? "Worker ready · MCF 1.1"
           : state.status === "unsupported" || state.status === "fatal"
             ? state.status === "unsupported"
               ? state.reason

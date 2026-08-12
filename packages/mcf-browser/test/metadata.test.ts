@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { McfPackage } from "mcf-npm/model";
+import type { ReaderPackage } from "../src/types";
 import { packageManifestFromMcf } from "../src/worker-core";
 
 test("validated package summaries retain canonical repository metadata", () => {
@@ -30,7 +30,7 @@ test("validated package summaries retain canonical repository metadata", () => {
       source: "lesson.mcf",
       activities: [],
     },
-  } as McfPackage);
+  } as ReaderPackage);
 
   assert.deepEqual(manifest.subjects, ["mathematics", "science"]);
   assert.deepEqual(manifest.keywords, ["calculus", "inquiry"]);

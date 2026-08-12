@@ -123,7 +123,9 @@ export function AppShell({
         </button>
         <span className="app-header-context">Portable learning</span>
         <div className="platform-utilities">
-          <ThemeControl compact />
+          <div className="desktop-theme-control">
+            <ThemeControl compact />
+          </div>
           <button className="header-action" type="button" onClick={openHelp}>
             Help
           </button>
@@ -169,6 +171,9 @@ export function AppShell({
           ))}
         </nav>
         <div className="app-sidebar-bottom">
+          <div className="mobile-theme-control">
+            <ThemeControl />
+          </div>
           <Link
             className="app-about-link"
             href="/about"
@@ -208,7 +213,7 @@ export function AppShell({
               <Link href="/studio">Create</Link>
               <Link href="/library">Learn</Link>
             </nav>
-            <p className="site-footer-note">MCF 1.0 + 1.1 · local-first</p>
+            <p className="site-footer-note">MCF 1.1 · local-first</p>
           </footer>
         ) : null}
       </div>

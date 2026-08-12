@@ -1,6 +1,6 @@
 # MCF reader feature support
 
-The reader consumes the current normalized `mcf-npm` 1.0/1.1 model.
+The reader consumes the current normalized `mcf-npm` 1.1 model. MCF 1.0 packages are rejected before they can enter the reader.
 
 | Area             | Support                                                                                                             |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------- |

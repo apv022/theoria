@@ -42,7 +42,7 @@ test("compiler output can be referenced by the library and opened in the reader"
   page,
 }) => {
   await page.goto("/compile");
-  await expect(page.getByText(/Worker ready · MCF 1.0 \+ 1.1/)).toBeVisible();
+  await expect(page.getByText("Worker ready · MCF 1.1")).toBeVisible();
   await page.locator('input[type="file"]').first().setInputFiles(small);
   await page.getByRole("button", { name: "Compile package" }).click();
   await expect(

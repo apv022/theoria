@@ -2,7 +2,7 @@
 
 Theoria is a repository-first, local-first home for portable MCF learning packages. This repository
 contains the application foundation, a real browser compiler, a complete local-first learner
-runtime, Creation Studio for MCF 1.0 and 1.1, and optional Supabase accounts.
+runtime, Creation Studio for MCF 1.1, and optional Supabase accounts.
 
 ## What works
 
@@ -10,7 +10,7 @@ runtime, Creation Studio for MCF 1.0 and 1.1, and optional Supabase accounts.
 - `.mcf.zip` drag-and-drop and file selection.
 - Directory selection through browsers that support `webkitdirectory`.
 - Security-gated ZIP extraction and normalized virtual files.
-- Manifest-first MCF 1.0/1.1 validation using the current `mcf-npm` implementation.
+- Manifest-first MCF 1.1 validation with deliberate rejection of unsupported versions.
 - Structured diagnostics in a dedicated Web Worker.
 - Learner-renderable, deterministic compiled ZIP output and sandboxed preview.
 - Source preservation/download and compiled ZIP download.
@@ -30,7 +30,7 @@ runtime, Creation Studio for MCF 1.0 and 1.1, and optional Supabase accounts.
 - Explicit per-device account synchronization for owned drafts, progress, library records, private
   local package sources, and compilation history, with a durable IndexedDB outbox and private
   checksum-addressed recovery artifacts.
-- Target-local fixtures representing MCF 1.0, compact MCF 1.1, and the authoring masterclass.
+- Target-local fixtures representing compact MCF 1.1, the authoring masterclass, and deprecated-version rejection.
 
 Question-bank and asset-collection packages validate but do not open in the learner. Manual work is
 saved as pending review and is never assigned an invented grade. Remote media remains

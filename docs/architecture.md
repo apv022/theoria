@@ -13,7 +13,7 @@ compiler client ──typed messages──> Web Worker
         |                               |
         |                               +─ secure ZIP/directory import
         |                               +─ normalized virtual filesystem
-        |                               +─ mcf-npm 1.0 / 1.1 dispatch
+        |                               +─ MCF 1.1 version gate + mcf-npm validation
         |                               +─ diagnostics and learner compilation
         |
         +─ IndexedDB local-store

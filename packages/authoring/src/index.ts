@@ -420,7 +420,6 @@ const packageMetadata = (pkg: ReaderPackage): Record<string, unknown> => {
     "lesson",
     "entry",
   ]);
-  if (pkg.mcf === "1.0") delete metadata.kind;
   return metadata;
 };
 

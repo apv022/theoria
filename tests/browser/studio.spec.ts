@@ -367,7 +367,7 @@ test("Studio remains operable at a mobile viewport", async ({ page }) => {
   ).toBeVisible();
 });
 
-test("imports an MCF 1.0 package directory without converting its version", async ({
+test("rejects an MCF 1.0 package directory without creating a draft", async ({
   page,
 }) => {
   await page.goto("/studio");
@@ -375,13 +375,10 @@ test("imports an MCF 1.0 package directory without converting its version", asyn
     .getByText("Import package directory")
     .locator("input")
     .setInputFiles(mcf10Fixture);
-  const card = page.locator(".draft-card").filter({ hasText: "MCF 1.0" });
-  await expect(card).toBeVisible();
-  await card.getByRole("link", { name: "Open draft" }).click();
-  await expect(page.getByText("course · MCF 1.0")).toBeVisible();
   await expect(
-    page.getByRole("heading", {
-      name: "Imported source is preserved exactly.",
-    }),
+    page.getByText(
+      "MCF 1.0 is no longer supported. Theoria currently supports MCF 1.1.",
+    ),
   ).toBeVisible();
+  await expect(page.locator(".draft-card")).toHaveCount(0);
 });

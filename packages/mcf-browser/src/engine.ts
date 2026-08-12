@@ -38,7 +38,7 @@ export class WorkerMcfEngine implements BrowserMcfEngine {
       this.worker = worker;
       worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
         if (event.data.type === "ready") {
-          this.state = { status: "ready", supportedVersions: ["1.0", "1.1"] };
+          this.state = { status: "ready", supportedVersions: ["1.1"] };
           this.initialization = undefined;
           resolve(this.state);
           return;

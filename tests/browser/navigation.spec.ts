@@ -76,3 +76,19 @@ test("mobile public shell uses one drawer with Escape and focus recovery", async
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(390);
 });
+
+test("appearance control moves into the mobile drawer without duplication", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/explore");
+  await expect(page.locator(".desktop-theme-control")).toBeHidden();
+  await page.getByRole("button", { name: "Menu" }).click();
+  const mobileTheme = page.locator(".mobile-theme-control").getByLabel("Theme");
+  await expect(mobileTheme).toBeVisible();
+  await mobileTheme.selectOption("dark");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await expect(page.locator(".mobile-theme-control")).toBeHidden();
+  await expect(page.locator(".desktop-theme-control")).toBeVisible();
+});

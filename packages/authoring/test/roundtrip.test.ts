@@ -35,6 +35,10 @@ const projectRoot = path.resolve(
 );
 const fixtureRoot = path.join(projectRoot, "fixtures/local");
 const fixture = (name: string) => path.join(fixtureRoot, name);
+type SupportedValidationResult = Omit<
+  Awaited<ReturnType<typeof validatePackage>>,
+  "package"
+> & { readonly package?: ReaderPackage };
 
 async function validateFiles(files: readonly SerializedFile[]) {
   const directory = await mkdtemp(path.join(projectRoot, ".authoring-test-"));
@@ -44,7 +48,7 @@ async function validateFiles(files: readonly SerializedFile[]) {
       await mkdir(path.dirname(target), { recursive: true });
       await writeFile(target, new Uint8Array(file.bytes));
     }
-    return await validatePackage(directory);
+    return (await validatePackage(directory)) as SupportedValidationResult;
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -329,7 +333,9 @@ test("visual regeneration preserves TeX-rich YAML values through parse and re-ex
 });
 
 test("visual metadata generation round-trips without phantom content", async () => {
-  const original = await validatePackage(fixture("minimal-1.1.mcf.zip"));
+  const original = (await validatePackage(
+    fixture("minimal-1.1.mcf.zip"),
+  )) as SupportedValidationResult;
   assert.ok(
     original.valid && original.package,
     "minimal fixture must validate",
@@ -369,7 +375,9 @@ test("source-first imports preserve every byte, asset, kind, and literal marker"
     const sourceFiles = extractSafeArchive(new Uint8Array(archive)).map(
       (file) => ({ path: file.path, bytes: bytes(file.bytes) }),
     );
-    const parsed = await validatePackage(fixture);
+    const parsed = (await validatePackage(
+      fixture,
+    )) as SupportedValidationResult;
     assert.ok(parsed.valid && parsed.package, `${fixture} must validate`);
     const counts = countPackage(parsed.package);
     const sourceArchive = createDeterministicArchive(

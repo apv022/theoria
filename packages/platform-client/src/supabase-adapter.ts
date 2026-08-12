@@ -66,7 +66,7 @@ type PackageVersionRow = {
   id: string;
   package_id: string;
   version: string;
-  mcf_version: "1.0" | "1.1";
+  mcf_version: "1.1";
   package_kind:
     | "course"
     | "module"
@@ -209,7 +209,7 @@ export type SupabaseDatabase = {
           id?: string;
           package_id: string;
           version: string;
-          mcf_version: "1.0" | "1.1";
+          mcf_version: "1.1";
           package_kind: PackageVersionRow["package_kind"];
           source_storage_path: string;
           source_checksum: string;
@@ -327,7 +327,7 @@ export type SupabaseDatabase = {
           requested_description: string;
           requested_visibility: "public" | "unlisted" | "private";
           requested_version: string;
-          requested_mcf_version: "1.0" | "1.1";
+          requested_mcf_version: "1.1";
           requested_package_kind: PackageVersionRow["package_kind"];
           requested_source_storage_path: string;
           requested_source_checksum: string;
