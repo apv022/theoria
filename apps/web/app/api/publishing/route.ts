@@ -47,7 +47,7 @@ const parseMetadata = (value: string): Omit<PublishingRequest, "archive"> => {
     !["public", "unlisted", "private"].includes(String(parsed.visibility)) ||
     typeof parsed.version !== "string" ||
     !semver.test(parsed.version) ||
-    !["1.0", "1.1"].includes(String(parsed.mcfVersion)) ||
+    parsed.mcfVersion !== "1.1" ||
     !kinds.has(String(parsed.packageKind)) ||
     typeof parsed.sourceChecksum !== "string" ||
     !/^[0-9a-f]{64}$/.test(parsed.sourceChecksum) ||

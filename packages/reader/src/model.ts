@@ -12,7 +12,7 @@ export interface ReaderStructure {
   readonly id: string;
   readonly title: string;
   readonly version: string;
-  readonly mcf: "1.0" | "1.1";
+  readonly mcf: "1.1";
   readonly kind: "course" | "module" | "lesson";
   readonly language: string;
   readonly chapters: readonly ReaderChapter[];

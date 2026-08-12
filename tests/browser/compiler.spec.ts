@@ -9,7 +9,7 @@ const feature = `${fixtureRoot}/feature-showcase.mcf.zip`;
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/compile");
-  await expect(page.getByText(/Worker ready · MCF 1.0 \+ 1.1/)).toBeVisible();
+  await expect(page.getByText("Worker ready · MCF 1.1")).toBeVisible();
 });
 
 test("validates and compiles a small MCF 1.1 archive", async ({ page }) => {
@@ -31,21 +31,21 @@ test("validates and compiles a small MCF 1.1 archive", async ({ page }) => {
   ).toBeVisible();
 });
 
-test("imports and compiles an MCF 1.0 package directory", async ({ page }) => {
+test("rejects an MCF 1.0 package before compilation", async ({ page }) => {
   await page.locator('input[type="file"]').nth(1).setInputFiles(fixture10);
   await page.getByRole("button", { name: "Compile package" }).click();
   await expect(
-    page.getByRole("heading", { name: "Package ready" }),
+    page.getByRole("heading", { name: "Needs attention" }),
   ).toBeVisible();
-  await expect(page.getByText("MCF 1.0 · course")).toBeVisible();
-  await page.getByRole("button", { name: "Preview in Reader" }).click();
-  await expect(page.getByRole("dialog")).toBeVisible();
-  await page.getByRole("button", { name: "Close preview" }).click();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-  await page.getByRole("button", { name: "Add to library" }).click();
-  await page.goto("/library");
-  await page.getByRole("link", { name: "Start learning" }).click();
-  await expect(page.locator(".reader-lesson")).toBeVisible();
+  await expect(
+    page.getByRole("paragraph").filter({
+      hasText:
+        "MCF 1.0 is no longer supported. Theoria currently supports MCF 1.1.",
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Preview in Reader" }),
+  ).toHaveCount(0);
 });
 
 test("Compiler Reader preview is bounded, isolated, and cannot recurse", async ({
@@ -136,4 +136,30 @@ test("shows structured security diagnostics for a hostile archive", async ({
   ).toBeVisible();
   await expect(page.getByText("MCF_PATH_TRAVERSAL")).toBeVisible();
   await expect(page.getByText(/Unsafe archive entry/)).toBeVisible();
+});
+
+test("rejects a future package version without crashing", async ({ page }) => {
+  const archive = zipSync({
+    "manifest.yaml": new TextEncoder().encode(
+      "mcf: '9.0'\nkind: course\nid: future\ntitle: Future\nlanguage: en\nversion: '1.0.0'\nchapters: []\n",
+    ),
+  });
+  await page
+    .locator('input[type="file"]')
+    .first()
+    .setInputFiles({
+      name: "future.mcf.zip",
+      mimeType: "application/zip",
+      buffer: Buffer.from(archive),
+    });
+  await page.getByRole("button", { name: "Compile package" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Needs attention" }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("paragraph")
+      .filter({ hasText: /MCF 9\.0 is not supported/ }),
+  ).toBeVisible();
+  await expect(page.locator(".compiler-workspace")).toBeVisible();
 });

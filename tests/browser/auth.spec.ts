@@ -77,7 +77,7 @@ test("signup restores its session, edits a public profile, and explicitly claims
   await expect(page.getByText("Owned by @creator_updated")).toBeVisible();
   await expect(page.getByText("Saved locally")).toBeVisible();
   await page.goto("/compile");
-  await expect(page.getByText(/Worker ready · MCF 1.0 \+ 1.1/)).toBeVisible();
+  await expect(page.getByText("Worker ready · MCF 1.1")).toBeVisible();
   await page.goto("/library");
   await page
     .locator('input[type="file"]')
@@ -203,7 +203,9 @@ test("token-hash signup confirmation establishes a session on another device and
       name: "Confirm your email address",
     }),
   ).toBeVisible();
-  expect((await requestCounts(confirmationPage))["/auth/v1/verify"] ?? 0).toBe(0);
+  expect((await requestCounts(confirmationPage))["/auth/v1/verify"] ?? 0).toBe(
+    0,
+  );
   await confirmationPage
     .getByRole("button", { name: "Confirm email address" })
     .click();

@@ -29,7 +29,7 @@ const kinds = new Set<PackageKind>([
   "question_bank",
   "asset_collection",
 ]);
-const versions = new Set<McfVersion>(["1.0", "1.1"]);
+const versions = new Set<McfVersion>(["1.1"]);
 const sorts = new Set<RepositorySort>([
   "relevance",
   "newest",

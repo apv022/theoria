@@ -265,20 +265,48 @@ export function PublishedPackageActions({
 
   return (
     <div className="published-actions">
-      <div className="actions repository-action-row">
+      <div className="repository-primary-action">
+        {added ? (
+          <LinkButton href={readerHref}>
+            {progress ? "Continue learning" : "Start learning"}
+          </LinkButton>
+        ) : (
+          <Button disabled={busy || checking} onClick={addToLibrary}>
+            {busy
+              ? "Adding…"
+              : checking
+                ? "Checking library…"
+                : otherVersion
+                  ? "Add this version to library"
+                  : "Add to library"}
+          </Button>
+        )}
+      </div>
+      <div
+        className="actions repository-utility-actions"
+        aria-label="Course actions"
+      >
         <Button
-          className="button-secondary"
+          className="button-secondary compact-action"
           disabled={starBusy || !initialNetwork}
           aria-pressed={starred}
           aria-label={`${starred ? "Remove star from" : "Star"} ${title}. ${starCount} stars`}
           onClick={toggleStar}
         >
-          {!initialNetwork
-            ? "Stars unavailable"
-            : starBusy
-              ? "Updating…"
-              : `${starred ? "★ Starred" : "☆ Star"} · ${starCount}`}
+          <span aria-hidden="true">{starred ? "★" : "☆"}</span>
+          <span>{starBusy ? "Updating…" : starCount}</span>
         </Button>
+        <a
+          className="button button-secondary compact-action"
+          href={sourceUrl}
+          download={`${slug}-${version}.mcf.zip`}
+          aria-label={`Download ${title} course file`}
+        >
+          <span aria-hidden="true">↓</span>
+          <span>Download</span>
+        </a>
+      </div>
+      <div className="actions repository-secondary-actions">
         <Button
           className="button-secondary"
           disabled={busy}
@@ -286,7 +314,11 @@ export function PublishedPackageActions({
         >
           {busy ? "Preparing…" : "Open in Creation Studio"}
         </Button>
-        <Button disabled={busy} onClick={() => openInStudio(true)}>
+        <Button
+          className="button-secondary"
+          disabled={busy}
+          onClick={() => openInStudio(true)}
+        >
           {busy
             ? "Preparing…"
             : initialNetwork
@@ -294,46 +326,15 @@ export function PublishedPackageActions({
               : "Fork into Creation Studio"}
         </Button>
       </div>
-      <div className="actions repository-download-row">
-        <a
-          className="button button-secondary"
-          href={sourceUrl}
-          download={`${slug}-${version}.mcf.zip`}
-        >
-          Download package
-        </a>
-        <a
-          className="button button-secondary"
-          href={sourceUrl}
-          download={`${slug}-${version}-source.mcf.zip`}
-        >
-          Download source
-        </a>
-      </div>
       {added ? (
-        <>
-          <LinkButton href={readerHref}>
-            {progress ? "Continue in Reader" : "Open in Reader"}
-          </LinkButton>
-          <Button
-            className="button-secondary"
-            disabled={busy}
-            onClick={addToLibrary}
-          >
-            {busy ? "Revalidating…" : "Re-download and revalidate"}
-          </Button>
-        </>
-      ) : (
-        <Button disabled={busy || checking} onClick={addToLibrary}>
-          {busy
-            ? "Adding…"
-            : checking
-              ? "Checking local library…"
-              : otherVersion
-                ? "Add this version separately"
-                : "Add to local library"}
+        <Button
+          className="button-secondary repository-refresh-action"
+          disabled={busy}
+          onClick={addToLibrary}
+        >
+          {busy ? "Revalidating…" : "Re-download course file"}
         </Button>
-      )}
+      ) : null}
       {otherVersion && !added ? (
         <Notice title="Another version is already local">
           Adding this release creates a separate local package and preserves

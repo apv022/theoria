@@ -1,6 +1,7 @@
 # Fixtures
 
-Human-maintained MCF packages live in `fixtures/sources/`. Run `pnpm fixtures:prepare` to generate
+Human-maintained MCF packages live in `fixtures/sources/`. `minimal-1.0` is retained only to test the
+intentional unsupported-version response. Run `pnpm fixtures:prepare` to generate
 deterministic archives in `fixtures/local/` and validate every result with the workspace-pinned
 `mcf-npm` CLI. Generated content is ignored by Git.
 

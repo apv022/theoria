@@ -7,7 +7,8 @@ import type {
 } from "@theoria/package-model";
 import type { McfPackage } from "mcf-npm/model";
 
-export type ReaderPackage = McfPackage;
+/** A package that has passed Theoria's MCF 1.1 version gate. */
+export type ReaderPackage = McfPackage & { readonly mcf: "1.1" };
 
 export type BrowserEngineState =
   | { readonly status: "uninitialized" }

@@ -6,7 +6,6 @@ The vendored `vendor/mcf-npm-1.1.0.tgz` is produced from current
 `/home/apv/mcf-npm` built output with lifecycle scripts disabled. Its source paths of interest are:
 
 - `src/package.ts`: manifest-first version dispatch and validation result;
-- `src/parser.ts`: exact MCF 1.0 parser;
 - `src/parser11.ts`: exact MCF 1.1 parser;
 - `src/model.ts`: normalized package and diagnostic model;
 - `src/yaml-profile.ts`: safe YAML profile and structured diagnostics;
@@ -27,9 +26,11 @@ at `/package`. Webpack replaces `node:fs/promises`, `node:path`, `node:crypto`, 
 - `shims/crypto.ts` implements the synchronous SHA-256 interface used for asset integrity;
 - `shims/package-reader.ts` opens only the already-mounted virtual directory.
 
-`validatePackage("/package")` remains responsible for reading `manifest.yaml`, rejecting unsupported
-versions, and dispatching exactly to MCF 1.0 or 1.1. There is no regex MCF parser and no version
-guessing.
+The adapter reads only the declared `mcf` scalar from `manifest.yaml` before semantic validation.
+MCF 1.0 receives the explicit deprecation message, and all other unsupported versions receive an
+intentional unsupported-version result. Accepted MCF 1.1 packages then pass to
+`validatePackage("/package")` for authoritative parsing and validation; Theoria does not guess a
+version or parse package semantics with regular expressions.
 
 ## Worker protocol
 
@@ -75,10 +76,9 @@ and JavaScript are never executed.
 
 Browser tests cover:
 
-- `/home/apv/mcf-samples/minimal` — MCF 1.0 course, 1 lesson, 1 activity, 0 questions;
 - `/home/apv/examplecourses/archives/minimal.mcf.zip` — MCF 1.1 course, 1/1/0;
 - `/home/apv/mcf-authoring-masterclass.mcf.zip` — MCF 1.1 course, 10/30/74.
 
-Both existing TypeScript and Python CLIs accept all three. Browser validation matches version, kind,
-validity, and counts; browser compilation succeeds for all three. Unit tests ensure literal
+Browser validation matches version, kind, validity, and counts for MCF 1.1. The retained MCF 1.0
+fixture verifies clean rejection and is not a compatibility fixture. Unit tests ensure literal
 `mcf-question` and asset text inside fenced examples do not create objects or active references.

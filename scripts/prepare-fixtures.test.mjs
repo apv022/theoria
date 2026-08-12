@@ -9,7 +9,7 @@ import {
   prepareFixtures,
 } from "./prepare-fixtures.mjs";
 
-test("manifest identity distinguishes MCF 1.0 and 1.1 defaults", () => {
+test("fixture metadata preserves the declared deprecated version for rejection tests", () => {
   assert.deepEqual(manifestIdentity("mcf: '1.0'\nid: sample"), {
     mcfVersion: "1.0",
     packageKind: "course",
@@ -38,7 +38,7 @@ test("fixture discovery is repository-owned and representative", async () => {
   );
 });
 
-test("preparation generates deterministic, valid fixtures", async (context) => {
+test("preparation generates deterministic upstream fixtures", async (context) => {
   const temporary = await mkdtemp(path.join(os.tmpdir(), "theoria-fixtures-"));
   context.after(() => rm(temporary, { recursive: true, force: true }));
   const first = path.join(temporary, "first");

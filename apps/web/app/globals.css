@@ -4025,6 +4025,7 @@ progress::-moz-progress-bar {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  object-position: center;
   background: color-mix(in srgb, #ffffff 8%, transparent);
 }
 .package-cover-fallback {
@@ -4053,11 +4054,20 @@ progress::-moz-progress-bar {
   aspect-ratio: 16 / 9;
   border-radius: 0;
 }
+.repository-card-cover > img,
+.library-card-cover > img {
+  object-fit: cover;
+}
 .library-card-cover {
-  width: 3rem;
-  height: 3rem;
-  flex: 0 0 3rem;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  flex: 1 0 100%;
   border-radius: var(--radius-sm);
+}
+.library-card-top {
+  flex-wrap: wrap;
+  gap: 0.7rem;
 }
 .detail-cover {
   aspect-ratio: auto;
@@ -4584,7 +4594,10 @@ progress::-moz-progress-bar {
     opacity: 0;
     pointer-events: none;
     transform: translateY(-0.35rem);
-    transition: opacity 140ms ease, transform 140ms ease, visibility 140ms ease;
+    transition:
+      opacity 140ms ease,
+      transform 140ms ease,
+      visibility 140ms ease;
   }
 
   .platform-header:not(.site-header) .platform-primary[data-open] {
@@ -4943,7 +4956,47 @@ progress::-moz-progress-bar {
   height: 1.5rem;
   flex: 0 0 1.5rem;
   place-items: center;
-  font: 1rem/1 var(--mono);
+  font: 1.15rem/1 var(--mono);
+}
+
+.mobile-theme-control {
+  display: none;
+}
+
+.published-actions {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.75rem 1rem;
+}
+
+.repository-primary-action .button {
+  min-height: 2.75rem;
+  padding-inline: 1.1rem;
+}
+
+.repository-utility-actions {
+  gap: 0.4rem;
+}
+
+.compact-action.button {
+  min-height: 2.4rem;
+  padding: 0.45rem 0.65rem;
+}
+
+.repository-secondary-actions,
+.repository-refresh-action,
+.published-actions > .notice,
+.published-actions > [role="status"],
+.published-actions > [role="alert"] {
+  grid-column: 1 / -1;
+}
+
+.repository-secondary-actions .button,
+.repository-refresh-action.button {
+  min-height: 2.35rem;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.75rem;
 }
 
 .app-nav-label {
@@ -5127,6 +5180,27 @@ progress::-moz-progress-bar {
     grid-column: 4;
   }
 
+  .desktop-theme-control {
+    display: none;
+  }
+
+  .mobile-theme-control {
+    display: block;
+    padding: 0.75rem 0.7rem;
+    border-bottom: 1px solid var(--navigation-line);
+  }
+
+  .mobile-theme-control .theme-control {
+    color: var(--navigation-muted);
+  }
+
+  .mobile-theme-control select {
+    width: 100%;
+    color: var(--navigation-ink);
+    background: var(--navigation-raised);
+    border-color: var(--navigation-line);
+  }
+
   .app-sidebar {
     position: fixed;
     z-index: 80;
@@ -5199,6 +5273,31 @@ progress::-moz-progress-bar {
 
   .reader-course-nav {
     height: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .published-actions {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .repository-primary-action .button,
+  .repository-utility-actions,
+  .repository-secondary-actions {
+    width: 100%;
+  }
+
+  .repository-primary-action .button {
+    width: 100%;
+  }
+
+  .repository-utility-actions .button {
+    flex: 1 1 0;
+  }
+
+  .repository-secondary-actions .button {
+    flex: 1 1 12rem;
   }
 }
 

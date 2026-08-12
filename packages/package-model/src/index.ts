@@ -10,7 +10,7 @@ export type PackageKind =
   | "lesson"
   | "question_bank"
   | "asset_collection";
-export type McfVersion = "1.0" | "1.1";
+export type McfVersion = "1.1";
 export type PackageVisibility = "private" | "unlisted" | "public";
 export type ValidationState = "unchecked" | "valid" | "invalid" | "unavailable";
 

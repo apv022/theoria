@@ -183,7 +183,6 @@ export function ExploreControls({
               >
                 <option value="">All format versions</option>
                 <option value="1.1">MCF 1.1</option>
-                <option value="1.0">MCF 1.0</option>
               </select>
             </label>
           </div>

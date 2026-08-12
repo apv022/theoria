@@ -43,7 +43,7 @@ const catalog: readonly SeedPackage[] = [
     keywords: ["angles"],
     level: "secondary",
     language: "fr",
-    mcfVersion: "1.0",
+    mcfVersion: "1.1",
     kind: "module",
     publishedAt: "2026-07-29T12:00:00.000Z",
   },
@@ -365,7 +365,48 @@ test("primary repository failures are bounded and lineage failures degrade local
   await expect(
     page.getByRole("heading", { name: "Repository unavailable" }),
   ).toBeVisible();
-  await expect(page.getByText(/Local Library, Reader, Studio/)).toBeVisible();
+  await expect(
+    page.getByText(/Local Library, Reader, Creation Studio/),
+  ).toBeVisible();
+});
+
+test("repository actions keep learning primary and utilities accessible", async ({
+  page,
+}) => {
+  await seed(page, [catalog[0]!]);
+  await page.goto("/packages/calculus-foundations");
+  await expect(
+    page
+      .locator(".repository-primary-action")
+      .getByRole("button", { name: "Add to library" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Star Calculus Foundations/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", {
+      name: "Download Calculus Foundations course file",
+    }),
+  ).toBeVisible();
+  await expect(page.locator(".repository-danger-zone")).toHaveCount(0);
+});
+
+test("course cards use a stable 16:9 cover frame and fallback", async ({
+  page,
+}) => {
+  await seed(page, [catalog[0]!]);
+  await page.goto("/explore");
+  const cover = page.locator(".repository-card-cover").first();
+  await expect(cover.locator(".package-cover-fallback")).toBeVisible();
+  const dimensions = await cover.evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    return {
+      ratio: box.width / box.height,
+      overflow: getComputedStyle(element).overflow,
+    };
+  });
+  expect(dimensions.ratio).toBeCloseTo(16 / 9, 1);
+  expect(dimensions.overflow).toBe("hidden");
 });
 
 test("profile service failures do not masquerade as missing profiles", async ({
@@ -385,15 +426,17 @@ test("repository source is validated before Add to Library and opens in Reader",
 }) => {
   await signup(page, "reader_publisher");
   const draftUrl = await publishValidCourse(page);
-  await page.getByRole("button", { name: "Add to local library" }).click();
+  await page.getByRole("button", { name: "Add to library" }).click();
   await expect(page.getByText(/was added to this browser/)).toBeVisible();
-  await page.getByRole("link", { name: "Open in Reader" }).click();
+  await page
+    .getByRole("link", { name: /Start learning|Continue learning/ })
+    .click();
   await expect(page.locator(".reader-lesson > header > h1")).toHaveText(
     "Welcome",
   );
   await page.goto("/packages/reader-ready-course/versions/1.0.0");
   await expect(
-    page.getByRole("link", { name: /Open in Reader|Continue in Reader/ }),
+    page.getByRole("link", { name: /Start learning|Continue learning/ }),
   ).toBeVisible();
 
   await page.goto(draftUrl);
@@ -416,7 +459,7 @@ test("repository source is validated before Add to Library and opens in Reader",
     page.getByRole("heading", { name: "Another version is already local" }),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "Add this version separately" })
+    .getByRole("button", { name: "Add this version to library" })
     .click();
   await expect(page.getByText(/was added to this browser/)).toBeVisible();
   const localState = await page.evaluate(async () => {
@@ -457,12 +500,12 @@ test("invalid repository source never enters the local library", async ({
     },
   ]);
   await page.goto("/packages/invalid-source/versions/1.0.0");
-  await page.getByRole("button", { name: "Add to local library" }).click();
+  await page.getByRole("button", { name: "Add to library" }).click();
   await expect(page.locator(".form-message.error-message")).toContainText(
     /archive|zip|central directory|package/i,
   );
   await expect(
-    page.getByRole("link", { name: /Open in Reader|Continue in Reader/ }),
+    page.getByRole("link", { name: /Start learning|Continue learning/ }),
   ).not.toBeVisible();
 });
 
@@ -485,7 +528,7 @@ test("stars and publishes a local fork with permanent release lineage", async ({
   ).toBeVisible();
 
   await page.goto("/packages/reader-ready-course");
-  await page.getByRole("button", { name: /Fork into Studio/ }).click();
+  await page.getByRole("button", { name: /Fork into Creation Studio/ }).click();
   await expect(page).toHaveURL(/\/studio\/[^/?#]+$/);
   await page.getByRole("button", { name: "publish", exact: true }).click();
   await page
@@ -515,24 +558,38 @@ test("owner soft-deletes a repository without erasing history or source", async 
   await publishValidCourse(page);
   await page.goto("/packages/reader-ready-course");
 
-  await expect(page.getByRole("heading", { name: "Delete repository" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Delete repository" }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Delete repository" }).click();
-  const dialog = page.getByRole("dialog", { name: /Delete reader-ready-course/ });
+  const dialog = page.getByRole("dialog", {
+    name: /Delete reader-ready-course/,
+  });
   await expect(dialog).toBeVisible();
-  const confirmation = dialog.getByLabel("Type reader-ready-course to confirm.");
+  const confirmation = dialog.getByLabel(
+    "Type reader-ready-course to confirm.",
+  );
   await confirmation.fill("wrong-slug");
-  await expect(dialog.getByRole("button", { name: "Delete permanently" })).toBeDisabled();
+  await expect(
+    dialog.getByRole("button", { name: "Delete permanently" }),
+  ).toBeDisabled();
   await confirmation.fill("reader-ready-course");
   await dialog.getByRole("button", { name: "Delete permanently" }).click();
   await expect(page).toHaveURL(/\/repositories$/);
-  await expect(page.getByRole("heading", { name: "No published repositories" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "No published repositories" }),
+  ).toBeVisible();
 
   await page.goto("/packages/reader-ready-course");
   await expect(page.getByText("Package unavailable")).toBeVisible();
   await page.goto("/explore?q=reader-ready-course");
-  await expect(page.getByRole("heading", { name: "No public packages match." })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "No public packages match." }),
+  ).toBeVisible();
   await page.goto("/profiles/soft_delete_author");
-  await expect(page.getByRole("heading", { name: "0 public packages" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "0 public packages" }),
+  ).toBeVisible();
 
   const state = await page.request
     .get(`${fakeSupabase}/__test/repository-state?slug=reader-ready-course`)
