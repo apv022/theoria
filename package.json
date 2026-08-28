@@ -13,7 +13,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint . --max-warnings=0",
-    "test": "node --test scripts/*.test.mjs && corepack pnpm --filter @theoria/mcf-browser test && corepack pnpm --filter @theoria/reader test && corepack pnpm --filter @theoria/authoring test && corepack pnpm --filter @theoria/local-store test && corepack pnpm --filter @theoria/platform-client test && corepack pnpm --filter @theoria/sync test",
+    "test": "node --test scripts/*.test.mjs && corepack pnpm --filter @theoria/ai-provider test && corepack pnpm --filter @theoria/creation-tools test && corepack pnpm --filter @theoria/mcf-browser test && corepack pnpm --filter @theoria/reader test && corepack pnpm --filter @theoria/authoring test && corepack pnpm --filter @theoria/local-store test && corepack pnpm --filter @theoria/platform-client test && corepack pnpm --filter @theoria/sync test",
     "test:browser": "playwright test",
     "test:dev": "node scripts/smoke-dev-server.mjs",
     "typecheck": "tsc --noEmit --pretty false -p tsconfig.check.json",

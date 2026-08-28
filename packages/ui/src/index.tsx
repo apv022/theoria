@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import type { ProviderConnectionState } from "@theoria/ai-provider";
 import type {
   ButtonHTMLAttributes,
   InputHTMLAttributes,
@@ -108,6 +109,38 @@ export function Status({
   readonly tone?: "neutral" | "positive" | "warning";
 }) {
   return <span className={`status status-${tone}`}>{children}</span>;
+}
+
+export function ProviderConnectionStatus({
+  state,
+  providerName,
+  onDisconnect,
+}: {
+  readonly state: ProviderConnectionState;
+  readonly providerName: string;
+  readonly onDisconnect?: () => void;
+}) {
+  const label =
+    state.status === "connected"
+      ? `Connected to ${providerName}`
+      : state.status === "connecting"
+        ? `Connecting to ${providerName}`
+        : state.status === "unavailable"
+          ? `${providerName} unavailable`
+          : `${providerName} not connected`;
+  return (
+    <div className="provider-connection-status">
+      <Status tone={state.status === "connected" ? "positive" : "neutral"}>
+        {label}
+      </Status>
+      {(state.status === "connected" || state.status === "unavailable") &&
+      onDisconnect ? (
+        <Button className="button-secondary" onClick={onDisconnect}>
+          Disconnect
+        </Button>
+      ) : null}
+    </div>
+  );
 }
 
 export function Notice({

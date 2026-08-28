@@ -1038,6 +1038,64 @@ h3 {
   justify-content: space-between;
   gap: 1rem;
 }
+.provider-connection-status {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.provider-connection-status .button {
+  min-height: 2.35rem;
+  padding: 0.45rem 0.7rem;
+}
+.provider-settings > p {
+  max-width: 44rem;
+}
+.provider-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin: 1.5rem 0;
+  background: var(--line);
+  border: 1px solid var(--line);
+}
+.provider-summary > div {
+  min-width: 0;
+  padding: 1rem;
+  background: var(--paper);
+}
+.provider-summary dt {
+  color: var(--muted);
+  font: 0.65rem var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.provider-summary dd {
+  margin: 0.3rem 0 0;
+  overflow-wrap: anywhere;
+  font-weight: 650;
+}
+.provider-advanced {
+  margin-top: 1rem;
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
+}
+.provider-advanced summary {
+  width: fit-content;
+  cursor: pointer;
+  font-weight: 700;
+}
+.provider-advanced form,
+.provider-model-picker {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--paper);
+  border: 1px solid var(--line);
+}
+.provider-issue {
+  color: var(--muted);
+}
 .profile-form {
   display: grid;
   gap: 1.2rem;
@@ -2581,6 +2639,14 @@ h3 {
   .studio-preview > header,
   .publish-panel > header {
     flex-direction: column;
+  }
+
+  .provider-connection-status {
+    justify-content: flex-start;
+  }
+
+  .provider-summary {
+    grid-template-columns: 1fr;
   }
   .studio-form > header .actions,
   .source-editor-panel > header .actions,
@@ -5328,5 +5394,257 @@ progress::-moz-progress-bar {
   .creation-studio-tools {
     width: min(100% - 1rem, 86rem);
     margin-top: 0.75rem;
+  }
+}
+
+/* Creation tool suite */
+.creation-tool-navigation {
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.75rem max(1rem, calc((100vw - 92rem) / 2));
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+  background: var(--white);
+}
+.creation-tool-navigation a {
+  flex: 0 0 auto;
+  padding: 0.65rem 0.9rem;
+  color: var(--muted);
+  text-decoration: none;
+  font-weight: 700;
+}
+.creation-tool-navigation a:hover,
+.creation-tool-navigation a[aria-current="page"] {
+  color: var(--ink);
+  background: var(--paper);
+}
+.creation-tool-navigation a[aria-current="page"] {
+  box-shadow: inset 0 -2px var(--accent);
+}
+.creation-tool-page {
+  width: min(100% - 3rem, 92rem);
+  margin: 0 auto;
+  padding: 3rem 0 6rem;
+}
+.creation-tool-hero {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+.creation-tool-hero h1 {
+  margin: 0.25rem 0 0.7rem;
+  font: clamp(3rem, 6vw, 5.7rem) / 0.95 var(--display);
+}
+.creation-tool-hero p:not(.section-label) {
+  max-width: 48rem;
+  color: var(--muted);
+}
+.creation-panel,
+.tool-callout,
+.batch-results {
+  padding: 1.5rem;
+  border: 1px solid var(--line);
+  background: var(--white);
+}
+.tool-callout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  margin-bottom: 1.5rem;
+}
+.tool-callout h2,
+.creation-panel h2,
+.batch-results h2 {
+  font: 2rem var(--display);
+}
+.factory-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(19rem, 26rem);
+  gap: 1.5rem;
+  align-items: start;
+}
+.factory-form {
+  display: grid;
+  gap: 1.5rem;
+}
+.factory-form textarea {
+  resize: vertical;
+}
+.factory-run-panel {
+  position: sticky;
+  top: 1rem;
+}
+.factory-progress {
+  margin: 1.25rem 0;
+  padding: 0.8rem;
+  border-left: 3px solid var(--accent);
+  background: var(--paper);
+  font-weight: 700;
+}
+.factory-result {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+.factory-result h2 {
+  margin: 0.8rem 0;
+}
+.batch-controls {
+  display: grid;
+  grid-template-columns: minmax(20rem, 1.4fr) minmax(18rem, 1fr);
+  gap: 1.5rem;
+}
+.batch-drop-zone {
+  display: grid;
+  min-height: 18rem;
+  place-items: center;
+  align-content: center;
+  padding: 2rem;
+  border: 1px dashed var(--muted);
+  text-align: center;
+  background: var(--paper);
+}
+.batch-drop-zone.is-dragging {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--paper));
+}
+.batch-drop-zone > span {
+  font: 3rem var(--display);
+  color: var(--accent);
+}
+.batch-drop-zone h2 {
+  margin: 0.35rem 0;
+}
+.batch-publish-controls {
+  display: grid;
+  align-content: center;
+  gap: 1rem;
+}
+.batch-results {
+  margin-top: 1.5rem;
+}
+.batch-summary {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 1px;
+  margin: -1.5rem -1.5rem 1.5rem;
+  background: var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.batch-summary div {
+  display: grid;
+  gap: 0.2rem;
+  padding: 1rem;
+  background: var(--paper);
+}
+.batch-summary strong {
+  font: 2rem var(--display);
+}
+.batch-summary span,
+.batch-table small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.batch-table-wrap {
+  overflow: auto;
+  max-height: 42rem;
+  border: 1px solid var(--line);
+}
+.batch-table {
+  width: 100%;
+  min-width: 58rem;
+  border-collapse: collapse;
+}
+.batch-table th,
+.batch-table td {
+  padding: 0.85rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+.batch-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--paper);
+  font: 0.68rem var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.batch-table td:nth-child(2) {
+  min-width: 14rem;
+}
+.batch-table td:nth-child(4) {
+  min-width: 11rem;
+}
+.batch-row-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.batch-row-actions .button {
+  min-height: 2.3rem;
+  padding: 0.45rem 0.65rem;
+}
+.batch-diagnostics {
+  margin-top: 1rem;
+}
+.batch-diagnostics details {
+  padding: 0.8rem 0;
+  border-top: 1px solid var(--line);
+}
+.batch-empty {
+  margin-top: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+  .factory-layout,
+  .batch-controls {
+    grid-template-columns: 1fr;
+  }
+  .factory-run-panel {
+    position: static;
+  }
+  .batch-summary {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .creation-tool-page {
+    width: min(100% - 2rem, 92rem);
+    padding-top: 2rem;
+  }
+  .creation-tool-hero,
+  .tool-callout {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .creation-tool-hero h1 {
+    font-size: clamp(2.8rem, 14vw, 4.5rem);
+  }
+  .batch-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 390px) {
+  .creation-tool-page {
+    width: min(100% - 1.25rem, 92rem);
+  }
+  .creation-panel,
+  .tool-callout,
+  .batch-results {
+    padding: 1rem;
+  }
+  .batch-summary {
+    margin: -1rem -1rem 1rem;
+  }
+  .factory-run-panel .actions,
+  .batch-publish-controls .actions {
+    display: grid;
   }
 }

@@ -21,10 +21,13 @@ local records and queued work.
 
 ## Processing
 
-IndexedDB schema 5 records per-item revisions, tombstones, artifact state, errors, a cursor, and a
+IndexedDB schema 6 records per-item revisions, tombstones, artifact state, errors, a cursor, and a
 durable outbox. The engine pulls paginated records after the cursor, reconciles them, then pushes
 queued operations with expected server revisions and stable idempotency keys. It checks SHA-256
 before immutable blob upload. A successful run records its cursor and completion time.
+
+The `providerCredentials` object store is not a sync category. Account-sync planning, outbox
+generation, remote payload encoding, Supabase records, and recovery blobs cannot enumerate it.
 
 Enabled devices attempt background synchronization after local changes and on reconnect.
 Operations stop between records when cancelled. Network loss or session expiration pauses work;

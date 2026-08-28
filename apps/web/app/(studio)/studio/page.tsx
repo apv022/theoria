@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CompilerWorkspace } from "../../../components/compiler-workspace";
 import { StudioDashboard } from "../../../components/studio-dashboard";
+import { CreationToolNavigation } from "../../../components/creation-tool-navigation";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Creation Studio" };
@@ -15,6 +16,7 @@ export default async function StudioPage({
   const compiler = tool === "compiler";
   return (
     <div className="creation-studio-page">
+      <CreationToolNavigation />
       <nav className="creation-studio-tools" aria-label="Creation Studio tools">
         <Link href="/studio" aria-current={!compiler ? "page" : undefined}>
           Course authoring

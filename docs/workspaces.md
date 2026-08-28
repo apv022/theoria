@@ -11,12 +11,14 @@ search, rankings, remote downloads, or full reader migration.
 
 ## Creation
 
-Studio owns authoring intent and draft structure. It does not absorb the compiler toolbar. The
-working `/compile` route is a focused creation tool for source import, validation, compilation,
-preview, downloads, and compilation history. Full authoring controls remain out of scope.
+Creation is free and owns Studio, Course Factory, and Batch Upload. They are one toolset, not
+separate products or Pro surfaces. Studio owns authoring intent and draft structure. Factory hands
+validated generated drafts to Studio for human review. Batch Upload orchestrates local validation
+and the existing single-package publishing operation. The compiler tool handles source import,
+validation, compilation, preview, downloads, and compilation history.
 
-Publishing will eventually cross from browser-owned compilation to server-owned distribution
-through `platform-client`. It must be a deliberate action after a valid local artifact exists.
+Publishing crosses from browser-owned compilation to server-owned distribution through
+`platform-client`. It remains a deliberate action after a valid local artifact exists.
 
 ## Institutional
 
@@ -28,7 +30,8 @@ reader, Studio, or compiler layouts.
 
 - Public visitors see discovery, local library, creation entry, search, and account entry.
 - Learners entering a package see only reading context.
-- Creators entering Studio see draft context.
+- Creators entering Creation can move among Studio, Course Factory, and Batch Upload without a
+  second global navigation.
 - Compiler users see only package processing and history.
 - Institutional users reach an isolated shell by direct organization route.
 

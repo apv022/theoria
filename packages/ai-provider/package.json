@@ -1,0 +1,14 @@
+{
+  "name": "@theoria/ai-provider",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "tsx --test test/*.test.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./openrouter-auth": "./src/providers/openrouter-auth.ts",
+    "./openrouter": "./src/providers/openrouter.ts"
+  }
+}

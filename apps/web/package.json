@@ -9,7 +9,9 @@
   },
   "dependencies": {
     "@supabase/ssr": "0.12.4",
+    "@theoria/ai-provider": "workspace:*",
     "@theoria/authoring": "workspace:*",
+    "@theoria/creation-tools": "workspace:*",
     "@theoria/local-store": "workspace:*",
     "@theoria/mcf-browser": "workspace:*",
     "@theoria/package-model": "workspace:*",

@@ -1,4 +1,9 @@
 import type {
+  ProviderCredential,
+  ProviderCredentialStore,
+  ProviderId,
+} from "@theoria/ai-provider";
+import type {
   CompilationRecord,
   DraftId,
   ImportedPackage,
@@ -49,6 +54,8 @@ export interface LocalStore {
   readonly library: LibraryStore;
   readonly progress: ProgressStore;
   readonly compilations: CompilationStore;
+  /** Device-local provider secrets. This store is intentionally outside account sync. */
+  readonly credentials: ProviderCredentialStore;
   readonly sync: LocalSyncStore;
 }
 
@@ -215,6 +222,15 @@ export class IndexedDbLocalStore implements LocalStore {
     "compilations",
     "compilation",
   );
+  readonly credentials: ProviderCredentialStore = {
+    get: (provider) => this.getCredential(provider),
+    put: (credential) => this.putCredential(credential),
+    remove: (provider) => this.removeCredential(provider),
+    selectedModel: async (provider) =>
+      (await this.getCredential(provider))?.selectedModelId,
+    selectModel: (provider, modelId) =>
+      this.selectCredentialModel(provider, modelId),
+  };
   readonly sync: LocalSyncStore = {
     settings: () => this.syncSettings(),
     configure: (update) => this.configureSync(update),
@@ -245,7 +261,7 @@ export class IndexedDbLocalStore implements LocalStore {
   ) {}
 
   private open(): Promise<IDBDatabase> {
-    const request = this.indexedDb.open(this.databaseName, 5);
+    const request = this.indexedDb.open(this.databaseName, 6);
     request.onupgradeneeded = () => {
       const database = request.result;
       if (!database.objectStoreNames.contains("drafts")) {
@@ -261,9 +277,9 @@ export class IndexedDbLocalStore implements LocalStore {
         compilations.createIndex("createdAt", "createdAt");
         compilations.createIndex("sourceChecksum", "sourceChecksum");
       }
-      // v2 → v3 and v3 → v4 are additive. Draft schema migration is performed
-      // record-by-record by the authoring domain so source blobs are never
-      // rewritten merely by opening the database.
+      // Database upgrades through v6 are additive. Draft schema migration is
+      // performed record-by-record by the authoring domain so source blobs are
+      // never rewritten merely by opening the database.
       if (!database.objectStoreNames.contains("library")) {
         database.createObjectStore("library", { keyPath: "packageId" });
       }
@@ -291,8 +307,59 @@ export class IndexedDbLocalStore implements LocalStore {
         conflicts.createIndex("category", "category");
         conflicts.createIndex("createdAt", "createdAt");
       }
+      if (!database.objectStoreNames.contains("providerCredentials")) {
+        database.createObjectStore("providerCredentials", {
+          keyPath: "providerId",
+        });
+      }
     };
     return requestResult(request);
+  }
+
+  private async getCredential(
+    provider: ProviderId,
+  ): Promise<ProviderCredential | undefined> {
+    const database = await this.open();
+    return requestResult(
+      database
+        .transaction("providerCredentials")
+        .objectStore("providerCredentials")
+        .get(provider),
+    ) as Promise<ProviderCredential | undefined>;
+  }
+
+  private async putCredential(credential: ProviderCredential): Promise<void> {
+    const database = await this.open();
+    const transaction = database.transaction(
+      "providerCredentials",
+      "readwrite",
+    );
+    transaction.objectStore("providerCredentials").put(credential);
+    await transactionDone(transaction);
+  }
+
+  private async removeCredential(provider: ProviderId): Promise<void> {
+    const database = await this.open();
+    const transaction = database.transaction(
+      "providerCredentials",
+      "readwrite",
+    );
+    transaction.objectStore("providerCredentials").delete(provider);
+    await transactionDone(transaction);
+  }
+
+  private async selectCredentialModel(
+    provider: ProviderId,
+    modelId: string,
+  ): Promise<void> {
+    const credential = await this.getCredential(provider);
+    if (!credential)
+      throw new Error("Connect the provider before selecting a model.");
+    await this.putCredential({
+      ...credential,
+      selectedModelId: modelId,
+      updatedAt: new Date().toISOString(),
+    });
   }
 
   private repository<T extends StoredValue, K extends IDBValidKey>(

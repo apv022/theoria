@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { IDBFactory } from "fake-indexeddb";
+import { OPENROUTER_PROVIDER_ID } from "@theoria/ai-provider";
 import {
+  draftId,
   packageId,
   type CompilationRecord,
   type LearnerProgress,
+  type PackageDraft,
 } from "@theoria/package-model";
 import { IndexedDbLocalStore } from "../src/index";
 
@@ -27,7 +30,7 @@ const openV2 = (factory: IDBFactory, name: string): Promise<IDBDatabase> =>
     request.onsuccess = () => resolve(request.result);
   });
 
-test("v2 to v5 migration preserves compilation history and adds no destructive changes", async () => {
+test("v2 to v6 migration preserves compilation history and adds no destructive changes", async () => {
   const factory = new IDBFactory();
   const name = "migration-test";
   const database = await openV2(factory, name);
@@ -76,7 +79,7 @@ test("v2 to v5 migration preserves compilation history and adds no destructive c
   assert.deepEqual(await store.progress.get(progress.packageId), progress);
 });
 
-test("v3 to v5 migration preserves every existing store and draft byte", async () => {
+test("v3 to v6 migration preserves every existing store and draft byte", async () => {
   const factory = new IDBFactory();
   const name = "draft-migration-test";
   const database = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -121,7 +124,7 @@ test("v3 to v5 migration preserves every existing store and draft byte", async (
   assert.deepEqual(await store.sync.outbox(), []);
 });
 
-test("v4 to v5 adds durable sync stores without claiming or queuing local data", async () => {
+test("v4 to v6 adds durable sync stores without claiming or queuing local data", async () => {
   const factory = new IDBFactory();
   const name = "sync-migration-test";
   const database = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -161,4 +164,91 @@ test("v4 to v5 adds durable sync stores without claiming or queuing local data",
   assert.equal((await store.sync.settings()).enabled, false);
   assert.equal((await store.sync.records()).length, 0);
   assert.equal((await store.sync.outbox()).length, 0);
+});
+
+test("provider credentials persist on this device and remain outside account sync", async () => {
+  const factory = new IDBFactory();
+  const name = "provider-credential-test";
+  const store = new IndexedDbLocalStore(name, factory);
+  await store.sync.configure({ enabled: true, userId: "user-1" });
+  const credential = {
+    providerId: OPENROUTER_PROVIDER_ID,
+    secret: "sk-or-v1-fake-test-credential",
+    createdAt: "2026-08-14T00:00:00.000Z",
+    updatedAt: "2026-08-14T00:00:00.000Z",
+  };
+
+  await store.credentials.put(credential);
+  await store.credentials.selectModel(
+    OPENROUTER_PROVIDER_ID,
+    "example/selected-model",
+  );
+
+  const reloaded = new IndexedDbLocalStore(name, factory);
+  assert.equal(
+    await reloaded.credentials.selectedModel(OPENROUTER_PROVIDER_ID),
+    "example/selected-model",
+  );
+  assert.equal(
+    (await reloaded.credentials.get(OPENROUTER_PROVIDER_ID))?.secret,
+    credential.secret,
+  );
+  assert.deepEqual(await reloaded.sync.records(), []);
+  assert.deepEqual(await reloaded.sync.outbox(), []);
+  assert.deepEqual(await reloaded.sync.counts(), {
+    drafts: 0,
+    library: 0,
+    progress: 0,
+    compilations: 0,
+    localPackages: 0,
+  });
+
+  await reloaded.credentials.remove(OPENROUTER_PROVIDER_ID);
+  assert.equal(
+    await reloaded.credentials.get(OPENROUTER_PROVIDER_ID),
+    undefined,
+  );
+  assert.equal(
+    await reloaded.credentials.selectedModel(OPENROUTER_PROVIDER_ID),
+    undefined,
+  );
+});
+
+test("provider credentials never enter serialized draft or MCF package state", async () => {
+  const store = new IndexedDbLocalStore(
+    "provider-package-isolation-test",
+    new IDBFactory(),
+  );
+  const secret = "sk-or-v1-fake-package-isolation-test";
+  await store.credentials.put({
+    providerId: OPENROUTER_PROVIDER_ID,
+    secret,
+    createdAt: "2026-08-14T00:00:00.000Z",
+    updatedAt: "2026-08-14T00:00:00.000Z",
+  });
+  const draft = {
+    schema: 1,
+    id: draftId("provider-isolation-draft"),
+    title: "Provider isolation",
+    kind: "course",
+    mcf: "1.1",
+    createdAt: "2026-08-14T00:00:00.000Z",
+    updatedAt: "2026-08-14T00:00:00.000Z",
+    revision: 1,
+    sourceFiles: [],
+    sourceMode: "generated",
+    visualEditing: "supported",
+    editor: { section: "content", previewSize: "desktop" },
+    commands: [],
+    validation: { state: "unchecked", diagnostics: [] },
+  } satisfies PackageDraft;
+  await store.drafts.put(draft);
+
+  const packageState = JSON.stringify(await store.drafts.list());
+  const syncPackageState = JSON.stringify(
+    await store.sync.value("draft", draft.id),
+  );
+  assert.ok(!packageState.includes(secret));
+  assert.ok(!syncPackageState.includes(secret));
+  assert.ok(!packageState.includes("providerCredentials"));
 });

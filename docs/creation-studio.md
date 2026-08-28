@@ -1,5 +1,23 @@
 # Creation Studio
 
+Creation is one free product area with Studio, Course Factory, and Batch Upload. All three routes
+stay on the main Theoria site; there is no Pro subdomain, separate frontend, entitlement, or paid
+Theoria compute tier.
+
+`/studio/factory` turns a locally preserved brief and optional text/Markdown material into a
+strict application-level course candidate through the connected OpenRouter adapter. The candidate
+is deterministically converted to ordinary MCF 1.1 source and inspected by the same browser worker
+validator used by Studio. A malformed candidate or validator rejection permits at most one
+targeted repair. Only a validator-approved result is persisted as a normal IndexedDB draft and
+offered to Studio. Factory never publishes, and provider failures leave inputs intact.
+
+`/studio/batch-upload` imports multiple normal MCF archives. A three-worker pool performs local
+inspection independently, preserving the existing MCF 1.0 deprecation diagnostic. Duplicate
+classification uses exact source checksums or package ID plus version, never titles. Selected valid
+items publish through the existing single-package publishing client with at most three concurrent
+operations. Per-item success, failure, retry, visibility, immutable-version enforcement, source
+archives, ownership, RLS, and repository links therefore retain the normal publishing semantics.
+
 `/studio` creates course, module, or lesson packages and imports secure archives or package
 directories. It lists local drafts with package kind, MCF version, validation status, revision, and
 last edit time. Rename, duplicate, source export, and confirmed deletion operate entirely in
@@ -40,3 +58,7 @@ source, and exported.
 Reordering is available by drag-and-drop and by labeled up/down controls. Lessons reorder within
 their current chapter; moving a lesson between chapters remains a source-mode operation. Command
 metadata is retained for a future undo/redo UI, but this stage does not expose history playback.
+
+Factory's generated instructional material is explicitly marked for human review. The model is
+not treated as a curriculum authority, and no generated draft can bypass Studio's ordinary review
+and publish flow. Batch Upload does not use AI.

@@ -4,8 +4,19 @@ Theoria is a repository-first, local-first home for portable MCF learning packag
 contains the application foundation, a real browser compiler, a complete local-first learner
 runtime, Creation Studio for MCF 1.1, and optional Supabase accounts.
 
+Theoria has no paid Pro product surface. Learning, creation, publishing, and advanced creator
+tools are free. When a creator workflow requires third-party compute, the user connects an account
+they control and pays that provider directly; Theoria does not intermediate inference billing.
+
 ## What works
 
+- Creation settings can connect a user-owned OpenRouter account through browser PKCE, validate or
+  remove a device-local credential, and select from the provider's current model list. Theoria does
+  not proxy requests or intermediate billing.
+- Course Factory creates validator-approved, locally saved MCF 1.1 drafts from structured briefs
+  through the user's selected provider, with bounded repair and an explicit Studio review handoff.
+- Batch Upload independently validates multiple MCF archives, detects exact duplicates, and sends
+  selected valid packages through the existing bounded, immutable publishing path without AI.
 - Distinct public, reader, Studio, compiler, and institutional route shells.
 - `.mcf.zip` drag-and-drop and file selection.
 - Directory selection through browsers that support `webkitdirectory`.
@@ -88,8 +99,10 @@ scripts run during installation.
 | Location                   | Responsibility                                                                 |
 | -------------------------- | ------------------------------------------------------------------------------ |
 | `apps/web`                 | Next.js App Router application and compiler interface                          |
+| `packages/ai-provider`     | Provider-neutral AI boundary and initial OpenRouter adapter                    |
 | `packages/package-model`   | Framework-independent package and local record types                           |
 | `packages/authoring`       | Canonical draft transformations and deterministic MCF source generation        |
+| `packages/creation-tools`  | Factory candidate/repair pipeline and bounded batch orchestration              |
 | `packages/mcf-browser`     | Secure import, virtual filesystem, worker adapter, validation, and compilation |
 | `packages/local-store`     | IndexedDB repositories                                                         |
 | `packages/reader`          | Rendering, evaluation, completion, and resumable learner runtime               |
@@ -102,5 +115,5 @@ Start with [architecture.md](docs/architecture.md), [repository.md](docs/reposit
 [search.md](docs/search.md), [visibility.md](docs/visibility.md),
 [publishing.md](docs/publishing.md), [package-versioning.md](docs/package-versioning.md),
 [authentication.md](docs/authentication.md), [learning-and-reader.md](docs/learning-and-reader.md),
-and
-[mcf-browser-integration.md](docs/mcf-browser-integration.md).
+and [mcf-browser-integration.md](docs/mcf-browser-integration.md). The external-compute boundary is
+documented in [compute-providers.md](docs/compute-providers.md).

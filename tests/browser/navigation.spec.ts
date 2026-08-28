@@ -10,6 +10,8 @@ test("desktop routes share one canonical application shell", async ({
     "/library",
     "/studio",
     "/studio?tool=compiler",
+    "/studio/factory",
+    "/studio/batch-upload",
   ]) {
     await page.goto(route);
     await expect(page.locator(".app-shell")).toHaveCount(1);
@@ -31,6 +33,27 @@ test("desktop routes share one canonical application shell", async ({
     );
     await expect(page.locator(".app-header")).toBeVisible();
   }
+});
+
+test("Creation exposes one cohesive Studio, Factory, and Batch tool switcher", async ({
+  page,
+}) => {
+  await page.goto("/studio");
+  const navigation = page.getByRole("navigation", { name: "Creation tools" });
+  await expect(navigation.getByRole("link")).toHaveCount(3);
+  await expect(
+    navigation.getByRole("link", { name: "Studio" }),
+  ).toHaveAttribute("aria-current", "page");
+  await navigation.getByRole("link", { name: "Course Factory" }).click();
+  await expect(page).toHaveURL(/\/studio\/factory$/);
+  await expect(
+    page.getByRole("heading", { name: "Course Factory" }),
+  ).toBeVisible();
+  await page
+    .getByRole("navigation", { name: "Creation tools" })
+    .getByRole("link", { name: "Batch Upload" })
+    .click();
+  await expect(page).toHaveURL(/\/studio\/batch-upload$/);
 });
 
 test("desktop sidebar collapse persists across navigation and reload", async ({

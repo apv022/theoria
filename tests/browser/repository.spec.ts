@@ -464,7 +464,7 @@ test("repository source is validated before Add to Library and opens in Reader",
   await expect(page.getByText(/was added to this browser/)).toBeVisible();
   const localState = await page.evaluate(async () => {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open("theoria", 5);
+      const request = indexedDB.open("theoria");
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });

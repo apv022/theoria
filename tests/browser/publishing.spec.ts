@@ -183,7 +183,9 @@ test("owners can find every private version while other readers remain denied", 
     page.getByRole("heading", { name: /Private Course 1\.0\.0/ }),
   ).toBeVisible();
   const ownerDownload = page.waitForEvent("download");
-  await page.getByRole("link", { name: "Download source" }).click();
+  await page
+    .getByRole("link", { name: "Download Private Course course file" })
+    .click();
   await expect((await ownerDownload).suggestedFilename()).toBe(
     "private-course-1.0.0.mcf.zip",
   );

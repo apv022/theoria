@@ -5,6 +5,17 @@
 The browser owns package execution and local state. A future server owns identity, permissions,
 distribution, shared repository state, and synchronization.
 
+## Product and compute decision
+
+Theoria has no paid Pro product surface. Core learning, creation, publishing, and advanced creator
+tools are free. Features requiring third-party compute use user-controlled provider credentials or
+local compute. Theoria does not intermediate compute billing.
+
+The boundary is Theoria-native/local functionality versus external compute, not Free versus Pro.
+An unavailable provider must not block learning, Studio, publishing, or other local workflows.
+Course Factory and Batch Upload belong to Creation; they are not separate products, repositories,
+frontends, entitlements, or subdomains.
+
 ```text
 Next.js route shell
         |
@@ -38,6 +49,14 @@ Studio client ───────────────────> canonic
         +─ IndexedDB autosave
         +─ compile → real /read preview
 
+future creator compute ─────────> provider-neutral AI interface
+        |                               |
+        |                               +─ OpenRouter (initial adapter)
+        |                               +─ other adapters (deferred)
+        |
+        +─ device-local IndexedDB credential
+        +─ no account sync, MCF serialization, or Theoria billing
+
 account UI ──────────────────────> platform-client interfaces
                                         |
                                         +─ Supabase adapter
@@ -51,7 +70,7 @@ repository pages ────────────────> platform-clie
                                         +─ bounded stable pagination
                                         +─ direct package/version reads under RLS
 
-local writes ──> IndexedDB schema 5 ──> durable outbox
+local writes ──> IndexedDB schema 6 ──> durable outbox
                          |                     |
                          |              framework-independent sync engine
                          |                     |
@@ -66,6 +85,11 @@ Studio publish ──same-origin──> Next.js publishing route
         +─ canonical source ZIP         +─ private Supabase Storage upload
                                         +─ controlled database finalization
 ```
+
+The web app exposes the compute boundary at `/settings/ai-providers`. OpenRouter authorization uses
+a canonical-site callback and direct browser PKCE exchange; it is independent of Supabase account
+authentication. Provider responses are normalized at the adapter boundary, and failed provider
+requests do not mutate package drafts.
 
 Supabase is optional and owns identity, public profiles, repository metadata, package ownership,
 visibility, canonical published source objects, and the optional account recovery layer. IndexedDB
@@ -84,23 +108,25 @@ through the same secure `mcf-browser` import and validation path as a local file
 | ------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------- |
 | Public        | `/`, `/explore`, `/packages/[slug]`, `/profiles/[handle]`, `/library`, `/settings` | Explore, Library, Create, Search, Account           |
 | Reader        | `/read/[packageId]`, `/read/[packageId]/[lessonId]`                                | Package outline, progress, and Exit reader only     |
-| Studio        | `/studio`, `/studio/[draftId]`                                                     | Creation workspace and Exit workspace               |
+| Studio        | `/studio`, `/studio/[draftId]`, `/studio/factory`, `/studio/batch-upload`          | Studio, Course Factory, and Batch Upload            |
 | Compiler      | `/compile`                                                                         | Import, validation, compilation, preview, history   |
 | Institutional | `/org/[orgSlug]`                                                                   | Isolated placeholder; absent from public navigation |
 
 ## Dependency direction
 
-`package-model` is the leaf domain package. `mcf-browser`, `local-store`, `reader`, `authoring`, and
-`platform-client` depend on it. `sync` depends on local-store and platform-client interfaces but has
-no React or Supabase dependency. `reader` consumes the normalized `mcf-browser` model but contains no
-React or storage code. `authoring` owns draft transformations and source generation, not parsing.
-`ui` depends only on React/Next peer APIs. `apps/web` composes them.
+`package-model`, `ai-provider`, and `creation-tools` are framework-independent domain boundaries. `mcf-browser`,
+`reader`, `authoring`, and `platform-client` depend on package-model; `local-store` implements the
+provider credential-store interface without making credentials package records. `sync` depends on
+local-store and platform-client interfaces but has no React or Supabase dependency. `reader`
+consumes the normalized `mcf-browser` model but contains no React or storage code. `authoring` owns
+draft transformations and source generation, not parsing. `ui` uses only secret-free provider
+connection state. `apps/web` composes the packages.
 Supabase-specific calls stay in the platform adapter and request infrastructure. Platform
 interfaces do not leak into package execution or IndexedDB.
 
 ## Local-first ownership
 
-Database `theoria`, schema version 5, contains:
+Database `theoria`, schema version 6, contains:
 
 - `drafts`, keyed by draft ID;
 - `packages`, keyed by package ID;
@@ -109,6 +135,7 @@ Database `theoria`, schema version 5, contains:
 - `compilations`, keyed by stable local UUID, with `createdAt` and `sourceChecksum` indexes.
 - `syncSettings`, `syncRecords`, `syncOutbox`, and `syncConflicts`, added without rewriting any
   content record.
+- `providerCredentials`, keyed by provider ID and deliberately excluded from every sync category.
 
 A compilation record includes identity, kind, MCF version, source checksum, source archive,
 compiled artifact, validation, diagnostics, timestamps, and sync state. Synchronization uploads it
@@ -117,8 +144,8 @@ without changing its local identity or taking over local writes.
 Library entries reference either an imported package record or an existing compilation record; they
 do not duplicate large archives. Learner progress has stable package/version/content IDs,
 monotonic revisions, timestamps, response and assessment state, and persisted random orders.
-The v2-to-v3, v3-to-v4, and v4-to-v5 upgrades are additive and leave compiler, library, package,
-progress, and draft history untouched.
+The v2-to-v3, v3-to-v4, v4-to-v5, and v5-to-v6 upgrades are additive and leave compiler, library,
+package, progress, and draft history untouched.
 
 Drafts, library entries, imported packages, and compilations can carry an optional stable local
 user-ownership reference. Existing records remain unclaimed. Claiming is explicit, and neither

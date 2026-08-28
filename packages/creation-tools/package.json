@@ -1,5 +1,5 @@
 {
-  "name": "@theoria/local-store",
+  "name": "@theoria/creation-tools",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,9 +11,10 @@
   },
   "dependencies": {
     "@theoria/ai-provider": "workspace:*",
-    "@theoria/package-model": "workspace:*"
+    "@theoria/mcf-browser": "workspace:*"
   },
   "devDependencies": {
-    "fake-indexeddb": "6.2.2"
+    "@theoria/authoring": "workspace:*",
+    "mcf-npm": "file:../../vendor/mcf-npm-1.1.0.tgz"
   }
 }

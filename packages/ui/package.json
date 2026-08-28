@@ -6,6 +6,9 @@
   "exports": {
     ".": "./src/index.tsx"
   },
+  "dependencies": {
+    "@theoria/ai-provider": "workspace:*"
+  },
   "peerDependencies": {
     "next": ">=16",
     "react": ">=19"

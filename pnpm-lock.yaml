@@ -59,9 +59,15 @@ importers:
       '@supabase/ssr':
         specifier: 0.12.4
         version: 0.12.4(@supabase/supabase-js@2.111.0)
+      '@theoria/ai-provider':
+        specifier: workspace:*
+        version: link:../../packages/ai-provider
       '@theoria/authoring':
         specifier: workspace:*
         version: link:../../packages/authoring
+      '@theoria/creation-tools':
+        specifier: workspace:*
+        version: link:../../packages/creation-tools
       '@theoria/local-store':
         specifier: workspace:*
         version: link:../../packages/local-store
@@ -103,6 +109,8 @@ importers:
         specifier: 19.1.7
         version: 19.1.7(@types/react@19.1.9)
 
+  packages/ai-provider: {}
+
   packages/authoring:
     dependencies:
       '@theoria/mcf-browser':
@@ -119,8 +127,27 @@ importers:
         specifier: file:../../vendor/mcf-npm-1.1.0.tgz
         version: file:vendor/mcf-npm-1.1.0.tgz
 
+  packages/creation-tools:
+    dependencies:
+      '@theoria/ai-provider':
+        specifier: workspace:*
+        version: link:../ai-provider
+      '@theoria/mcf-browser':
+        specifier: workspace:*
+        version: link:../mcf-browser
+    devDependencies:
+      '@theoria/authoring':
+        specifier: workspace:*
+        version: link:../authoring
+      mcf-npm:
+        specifier: file:../../vendor/mcf-npm-1.1.0.tgz
+        version: file:vendor/mcf-npm-1.1.0.tgz
+
   packages/local-store:
     dependencies:
+      '@theoria/ai-provider':
+        specifier: workspace:*
+        version: link:../ai-provider
       '@theoria/package-model':
         specifier: workspace:*
         version: link:../package-model
@@ -215,6 +242,9 @@ importers:
 
   packages/ui:
     dependencies:
+      '@theoria/ai-provider':
+        specifier: workspace:*
+        version: link:../ai-provider
       next:
         specifier: '>=16'
         version: 16.2.11(@babel/core@7.29.7)(@playwright/test@1.61.1)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
@@ -3901,7 +3931,7 @@ snapshots:
       eslint: 9.31.0
       eslint-import-resolver-node: 0.3.10
       eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.38.0(eslint@9.31.0)(typescript@5.8.3))(eslint@9.31.0))(eslint@9.31.0)
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.38.0(eslint@9.31.0)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.31.0)
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.38.0(eslint@9.31.0)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.38.0(eslint@9.31.0)(typescript@5.8.3))(eslint@9.31.0))(eslint@9.31.0))(eslint@9.31.0)
       eslint-plugin-jsx-a11y: 6.10.2(eslint@9.31.0)
       eslint-plugin-react: 7.37.5(eslint@9.31.0)
       eslint-plugin-react-hooks: 7.1.1(eslint@9.31.0)
@@ -3934,7 +3964,7 @@ snapshots:
       tinyglobby: 0.2.17
       unrs-resolver: 1.12.2
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.38.0(eslint@9.31.0)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.31.0)
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.38.0(eslint@9.31.0)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.38.0(eslint@9.31.0)(typescript@5.8.3))(eslint@9.31.0))(eslint@9.31.0))(eslint@9.31.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -3949,7 +3979,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.38.0(eslint@9.31.0)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.31.0):
+  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.38.0(eslint@9.31.0)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.38.0(eslint@9.31.0)(typescript@5.8.3))(eslint@9.31.0))(eslint@9.31.0))(eslint@9.31.0):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.9
